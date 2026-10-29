@@ -19,35 +19,25 @@ public sealed class DashboardViewModel : ObservableObject
 
         RobotConnection = ProjectRobotConnection(snapshot.Dashboard, snapshot.Rtde);
         RobotMode = IndicatorViewModel.Unavailable("Robot Mode");
-        RobotStatus = IndicatorViewModel.Unavailable("Robot Status");
-        ProgramStatus = IndicatorViewModel.Unavailable("Program Status");
         SafetyStatus = IndicatorViewModel.Unavailable("Safety Status");
         ActiveFault = IndicatorViewModel.Unavailable("Active Fault");
-        TcpPosition = IndicatorViewModel.Unavailable("TCP Position");
-        TcpSpeed = IndicatorViewModel.Unavailable("TCP Speed");
         PlcConnection = IndicatorViewModel.Connection("PLC Connection", plcSnapshot.Channel);
-        ToolStatus = IndicatorViewModel.Unavailable("Tool Status");
         ActiveAlarms = new IndicatorViewModel(
             "Active Alarms",
             activeAlarms.ToString(),
             IndicatorKind.Normal,
             Freshness.Live,
             string.Empty);
-        LastUpdate = IndicatorViewModel.Unavailable("Last Update");
+        TcpPosition = IndicatorViewModel.Unavailable("TCP Position");
+        TcpSpeed = IndicatorViewModel.Unavailable("TCP Speed");
         Indicators =
         [
             RobotConnection,
             RobotMode,
-            RobotStatus,
-            ProgramStatus,
             SafetyStatus,
             ActiveFault,
-            TcpPosition,
-            TcpSpeed,
             PlcConnection,
-            ToolStatus,
-            ActiveAlarms,
-            LastUpdate
+            ActiveAlarms
         ];
 
         StationStatusText = "—";
@@ -62,25 +52,17 @@ public sealed class DashboardViewModel : ObservableObject
 
     public IndicatorViewModel RobotMode { get; }
 
-    public IndicatorViewModel RobotStatus { get; }
-
-    public IndicatorViewModel ProgramStatus { get; }
-
     public IndicatorViewModel SafetyStatus { get; }
 
     public IndicatorViewModel ActiveFault { get; }
 
-    public IndicatorViewModel TcpPosition { get; }
-
-    public IndicatorViewModel TcpSpeed { get; }
-
     public IndicatorViewModel PlcConnection { get; }
-
-    public IndicatorViewModel ToolStatus { get; }
 
     public IndicatorViewModel ActiveAlarms { get; }
 
-    public IndicatorViewModel LastUpdate { get; }
+    public IndicatorViewModel TcpPosition { get; }
+
+    public IndicatorViewModel TcpSpeed { get; }
 
     public IReadOnlyList<IndicatorViewModel> Indicators { get; }
 

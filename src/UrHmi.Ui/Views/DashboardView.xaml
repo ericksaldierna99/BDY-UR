@@ -5,8 +5,8 @@
   <Grid Margin="12,8,12,8">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
+      <RowDefinition Height="3*" />
       <RowDefinition Height="5*" />
-      <RowDefinition Height="4*" />
     </Grid.RowDefinitions>
     <TextBlock Style="{DynamicResource ModuleTitleStyle}" Text="Dashboard" />
     <ItemsControl Grid.Row="1"
@@ -14,7 +14,7 @@
                   ItemsSource="{Binding Indicators}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
-          <UniformGrid Columns="4" Rows="3" />
+          <UniformGrid Columns="3" Rows="2" />
         </ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
@@ -44,31 +44,48 @@
         <Grid.RowDefinitions>
           <RowDefinition Height="*" />
           <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Border Background="{DynamicResource Brush.Surface}"
                 CornerRadius="6"
-                Padding="12,8">
+                Padding="16,12">
           <StackPanel VerticalAlignment="Center">
-            <TextBlock FontSize="11"
+            <TextBlock FontSize="18"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource Brush.Muted}"
                        Text="Station status" />
-            <TextBlock Margin="0,2,0,0"
-                       FontSize="36"
+            <TextBlock Margin="0,4,0,0"
+                       FontSize="56"
                        FontWeight="Bold"
                        Foreground="{DynamicResource Brush.Text}"
                        Text="{Binding StationStatusText}" />
-            <TextBlock Margin="0,2,0,0"
-                       FontSize="12"
+            <TextBlock Margin="0,4,0,0"
+                       FontSize="16"
                        Foreground="{DynamicResource Brush.Muted}"
                        Text="{Binding StationStatusHint}" />
-            <TextBlock Margin="0,2,0,0"
-                       FontSize="11"
+            <TextBlock Margin="0,4,0,0"
+                       FontSize="13"
                        Foreground="{DynamicResource Brush.Muted}"
                        Text="{Binding StationStatusCaption}" />
           </StackPanel>
         </Border>
-        <UniformGrid Grid.Row="1" Columns="3">
+        <UniformGrid Grid.Row="1" Columns="2">
+          <Border Style="{DynamicResource CompactMetricCardStyle}">
+            <StackPanel>
+              <TextBlock Style="{DynamicResource CompactMetricLabelStyle}" Text="{Binding TcpPosition.Title}" />
+              <TextBlock Style="{DynamicResource CompactMetricValueStyle}" Text="{Binding TcpPosition.DisplayText}" />
+              <TextBlock Style="{DynamicResource CompactMetricCaptionStyle}" Text="{Binding TcpPosition.FreshnessCaption}" />
+            </StackPanel>
+          </Border>
+          <Border Style="{DynamicResource CompactMetricCardStyle}">
+            <StackPanel>
+              <TextBlock Style="{DynamicResource CompactMetricLabelStyle}" Text="{Binding TcpSpeed.Title}" />
+              <TextBlock Style="{DynamicResource CompactMetricValueStyle}" Text="{Binding TcpSpeed.DisplayText}" />
+              <TextBlock Style="{DynamicResource CompactMetricCaptionStyle}" Text="{Binding TcpSpeed.FreshnessCaption}" />
+            </StackPanel>
+          </Border>
+        </UniformGrid>
+        <UniformGrid Grid.Row="2" Columns="3">
           <Border Style="{DynamicResource MetricCardStyle}">
             <StackPanel>
               <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="UPH" />

@@ -154,4 +154,23 @@
     <Setter Property="FontSize" Value="10" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
   </Style>
+
+  <Style x:Key="CompactMetricCardStyle" TargetType="Border" BasedOn="{StaticResource MetricCardStyle}">
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="Margin" Value="4,6,4,0" />
+  </Style>
+
+  <Style x:Key="CompactMetricLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource MetricLabelStyle}">
+    <Setter Property="FontSize" Value="10" />
+  </Style>
+
+  <Style x:Key="CompactMetricValueStyle" TargetType="TextBlock" BasedOn="{StaticResource MetricValueStyle}">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Margin" Value="0,1,0,1" />
+  </Style>
+
+  <Style x:Key="CompactMetricCaptionStyle" TargetType="TextBlock" BasedOn="{StaticResource MetricCaptionStyle}">
+    <Setter Property="FontSize" Value="9" />
+  </Style>
 </ResourceDictionary>
+
