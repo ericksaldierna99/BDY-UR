@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>UrHmi.Domain</RootNamespace>
+    <AssemblyName>UrHmi.Domain</AssemblyName>
+    <Description>Domain model and ports for the UR Robot Interfaz HMI.</Description>
+  </PropertyGroup>
+</Project>

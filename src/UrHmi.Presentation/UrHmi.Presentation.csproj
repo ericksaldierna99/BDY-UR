@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>UrHmi.Presentation</RootNamespace>
+    <AssemblyName>UrHmi.Presentation</AssemblyName>
+    <Description>ViewModels and navigation. No WPF Dispatcher dependency.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UrHmi.Application\UrHmi.Application.csproj" />
+    <ProjectReference Include="..\UrHmi.Domain\UrHmi.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+</Project>

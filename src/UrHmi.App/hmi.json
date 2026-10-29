@@ -1,0 +1,26 @@
+{
+  "robot": {
+    "ip": "",
+    "dashboard": {
+      "port": 29999,
+      "staleTimeoutMs": 2000
+    },
+    "rtde": {
+      "port": 30004,
+      "staleTimeoutMs": 200,
+      "recipeId": "default"
+    }
+  },
+  "plc": {
+    "ip": "",
+    "transport": "simulator",
+    "staleTimeoutMs": 1000
+  },
+  "tools": {
+    "selectedId": null,
+    "enabled": []
+  },
+  "ui": {
+    "theme": "industrial"
+  }
+}

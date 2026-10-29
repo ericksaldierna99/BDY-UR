@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>UrHmi.Tools.Abstractions</RootNamespace>
+    <AssemblyName>UrHmi.Tools.Abstractions</AssemblyName>
+    <Description>Tool module contracts. Core projects must not reference a concrete tool assembly.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UrHmi.Domain\UrHmi.Domain.csproj" />
+  </ItemGroup>
+</Project>

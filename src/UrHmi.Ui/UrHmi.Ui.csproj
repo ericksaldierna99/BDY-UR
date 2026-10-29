@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>UrHmi.Ui</RootNamespace>
+    <AssemblyName>UrHmi.Ui</AssemblyName>
+    <Description>WPF views, themes, converters, and indicator primitives.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UrHmi.Presentation\UrHmi.Presentation.csproj" />
+    <ProjectReference Include="..\UrHmi.Domain\UrHmi.Domain.csproj" />
+  </ItemGroup>
+</Project>

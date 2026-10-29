@@ -1,0 +1,8 @@
+<UserControl x:Class="UrHmi.Ui.Views.AlarmsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StackPanel Margin="24">
+    <TextBlock Style="{DynamicResource ModuleTitleStyle}" Text="{Binding Title}" />
+    <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding EmptyMessage}" />
+  </StackPanel>
+</UserControl>

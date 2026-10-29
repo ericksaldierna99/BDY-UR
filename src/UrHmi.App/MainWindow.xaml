@@ -1,0 +1,34 @@
+<Window x:Class="UrHmi.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="UR Robot Interfaz"
+        Width="1280"
+        Height="800"
+        MinWidth="1024"
+        MinHeight="640"
+        Style="{DynamicResource ShellWindowStyle}"
+        WindowStartupLocation="CenterScreen">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="240" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+    <DockPanel Grid.Column="0" Background="{DynamicResource Brush.Surface}">
+      <TextBlock DockPanel.Dock="Top"
+                 Margin="16,20,16,12"
+                 FontSize="16"
+                 FontWeight="SemiBold"
+                 Foreground="{DynamicResource Brush.Text}"
+                 Text="UR Robot Interfaz" />
+      <ListBox Margin="8,0,8,16"
+               DisplayMemberPath="DisplayName"
+               ItemsSource="{Binding Modules}"
+               SelectedItem="{Binding CurrentModule}"
+               Style="{DynamicResource NavListBoxStyle}"
+               ItemContainerStyle="{DynamicResource NavItemStyle}" />
+    </DockPanel>
+    <Border Grid.Column="1" Background="{DynamicResource Brush.Background}">
+      <ContentControl Content="{Binding CurrentViewModel}" />
+    </Border>
+  </Grid>
+</Window>
