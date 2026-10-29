@@ -2,15 +2,13 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="32">
+    <StackPanel Margin="16">
       <TextBlock Style="{DynamicResource ModuleTitleStyle}" Text="{Binding Title}" />
       <TextBlock Style="{DynamicResource BodyTextStyle}"
-                 FontSize="18"
-                 Margin="0,0,0,20"
+                 Margin="0,0,0,12"
                  Text="{Binding Notice}" />
       <TextBlock Style="{DynamicResource BodyTextStyle}"
-                 FontSize="18"
-                 Margin="0,0,0,24"
+                 Margin="0,0,0,16"
                  Foreground="{DynamicResource Brush.Warning}"
                  Text="{Binding SafeModeMessage}" />
       <WrapPanel>

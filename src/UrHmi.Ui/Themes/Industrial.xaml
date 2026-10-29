@@ -26,7 +26,7 @@
     <Setter Property="Background" Value="{StaticResource Brush.Background}" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
     <Setter Property="FontFamily" Value="Segoe UI" />
-    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontSize" Value="13" />
   </Style>
 
   <Style x:Key="NavListBoxStyle" TargetType="ListBox">
@@ -53,9 +53,9 @@
   </Style>
 
   <Style x:Key="NavItemStyle" TargetType="ListBoxItem">
-    <Setter Property="Padding" Value="16,18" />
-    <Setter Property="Margin" Value="4" />
-    <Setter Property="FontSize" Value="20" />
+    <Setter Property="Padding" Value="8,8" />
+    <Setter Property="Margin" Value="2" />
+    <Setter Property="FontSize" Value="13" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -86,42 +86,42 @@
   </Style>
 
   <Style x:Key="ModuleTitleStyle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="28" />
+    <Setter Property="FontSize" Value="18" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
-    <Setter Property="Margin" Value="0,0,0,16" />
+    <Setter Property="Margin" Value="0,0,0,8" />
   </Style>
 
   <Style x:Key="BodyTextStyle" TargetType="TextBlock">
     <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
     <Setter Property="TextWrapping" Value="Wrap" />
-    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontSize" Value="13" />
   </Style>
 
   <Style x:Key="DeviceCardStyle" TargetType="Border">
     <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
     <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Padding" Value="28" />
-    <Setter Property="Margin" Value="0,0,20,20" />
-    <Setter Property="MinWidth" Value="420" />
+    <Setter Property="Padding" Value="16" />
+    <Setter Property="Margin" Value="0,0,12,12" />
+    <Setter Property="MinWidth" Value="280" />
   </Style>
 
   <Style x:Key="DeviceCardTitleStyle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="24" />
+    <Setter Property="FontSize" Value="16" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
-    <Setter Property="Margin" Value="0,0,0,12" />
+    <Setter Property="Margin" Value="0,0,0,8" />
   </Style>
 
   <Style x:Key="SettingLabelStyle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontSize" Value="12" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
-    <Setter Property="Margin" Value="0,14,0,8" />
+    <Setter Property="Margin" Value="0,8,0,4" />
   </Style>
 
   <Style x:Key="SettingFieldStyle" TargetType="TextBox">
-    <Setter Property="FontSize" Value="22" />
-    <Setter Property="Padding" Value="14,12" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Padding" Value="8,6" />
     <Setter Property="IsReadOnly" Value="True" />
     <Setter Property="Background" Value="{StaticResource Brush.SurfaceAlt}" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
@@ -133,25 +133,25 @@
   <Style x:Key="MetricCardStyle" TargetType="Border">
     <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
     <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Padding" Value="20,16" />
-    <Setter Property="Margin" Value="0,12,12,0" />
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="Margin" Value="4,6,4,0" />
   </Style>
 
   <Style x:Key="MetricLabelStyle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
   </Style>
 
   <Style x:Key="MetricValueStyle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="36" />
+    <Setter Property="FontSize" Value="20" />
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
-    <Setter Property="Margin" Value="0,8,0,4" />
+    <Setter Property="Margin" Value="0,2,0,2" />
   </Style>
 
   <Style x:Key="MetricCaptionStyle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontSize" Value="10" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
   </Style>
 </ResourceDictionary>
