@@ -36,7 +36,7 @@
               CornerRadius="6"
               Margin="4"
               Padding="8">
-        <Image Source="pack://application:,,,/UrHmi.Ui;component/Assets/ur-robot.jpg"
+        <Image Source="pack://application:,,,/UrHmi.Ui;component/Assets/ur-robot.png"
                Stretch="Uniform"
                RenderOptions.BitmapScalingMode="HighQuality" />
       </Border>

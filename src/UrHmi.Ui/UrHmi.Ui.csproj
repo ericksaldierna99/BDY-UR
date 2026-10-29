@@ -10,6 +10,6 @@
     <ProjectReference Include="..\UrHmi.Domain\UrHmi.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Assets\ur-robot.jpg" />
+    <Resource Include="Assets\ur-robot.png" />
   </ItemGroup>
 </Project>
