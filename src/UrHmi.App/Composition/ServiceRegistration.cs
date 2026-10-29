@@ -58,12 +58,13 @@ internal static class ServiceRegistration
         services.AddSingleton<IAlarmStore>(sp => sp.GetRequiredService<InMemoryAlarmStore>());
         services.AddSingleton<IAlarmSink>(sp => sp.GetRequiredService<InMemoryAlarmStore>());
 
-        services.AddSingleton<IRobotDashboardClient, PlaceholderRobotDashboardClient>();
-        services.AddSingleton<IRtdeClient, PlaceholderRtdeClient>();
+        services.AddSingleton<IRobotDashboardClient, TcpDashboardClient>();
+        services.AddSingleton<IRtdeClient, RtdeClient>();
         services.AddSingleton<IPlcChannel, PlaceholderPlcChannel>();
 
         services.AddSingleton<RobotTelemetryService>();
         services.AddSingleton<IRobotTelemetry>(sp => sp.GetRequiredService<RobotTelemetryService>());
+        services.AddSingleton<IRobotChannelControl>(sp => sp.GetRequiredService<RobotTelemetryService>());
         services.AddHostedService(sp => sp.GetRequiredService<RobotTelemetryService>());
 
         services.AddSingleton<PlcTelemetryService>();

@@ -23,7 +23,7 @@ public sealed class PlaceholderPlcChannel : IPlcChannel
 
     public Task ConnectAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("PLC channel placeholder: no EtherNet/IP or Modbus transport in Phase 0.");
+        _logger.LogInformation("PLC channel placeholder: no EtherNet/IP or Modbus transport in this phase.");
         Health = ChannelHealth.Disconnected(ChannelIds.Plc);
         return Task.CompletedTask;
     }
@@ -34,7 +34,7 @@ public sealed class PlaceholderPlcChannel : IPlcChannel
         return Task.FromResult(new WriteResult(
             WriteOutcome.Rejected,
             request.CorrelationId,
-            "PLC writes are not available in Phase 0."));
+            "PLC writes are not available in this phase."));
     }
 
     public Task DisconnectAsync()

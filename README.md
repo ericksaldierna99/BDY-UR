@@ -2,18 +2,18 @@
 
 Windows HMI (WPF, C#, .NET 10) for a Universal Robots UR12e and an Allen-Bradley Micro820.
 
-## Phase 0
+## Phase 1
 
-This repository currently contains the solution skeleton:
+Dashboard Server (TCP 29999) and RTDE (TCP 30004, protocol v2) are wired for UR12e PolyScope 5.25.2.
 
-- Layered projects (`UrHmi.App`, `UrHmi.Ui`, `UrHmi.Presentation`, `UrHmi.Application`, `UrHmi.Domain`, `UrHmi.Infrastructure`, `UrHmi.Tools.Abstractions`)
-- Generic Host and dependency injection in the WPF startup project
-- JSON configuration (`hmi.json`) without secrets
-- Placeholder ports for Dashboard Server, RTDE, and `IPlcChannel`
-- Navigation to Dashboard, Alarm Management, Tool Management, and Settings
-- Indicator primitives for Normal, Warning, Fault, Safety, and CommsLoss, plus freshness captions
+- Live / Stale / Unavailable on process values. A disconnect does not write “robot stopped”.
+- Dashboard tiles that have a robot source use controller data; PLC, station status, UPH, and cycle times stay placeholders.
+- Settings includes connection diagnostics (link, sample age, last error, Test connection, Reconnect).
+- Communication alarms increment the Dashboard active-alarm count. Alarm history/CSV is a later phase.
 
-Spec section 5.4 is unspecified and has no screen.
+Spec section 5.4 is unspecified and has no screen. Play/stop/move are not implemented.
+
+Set `robot.ip` in `hmi.json` on the HMI PC. An empty IP does not open sockets.
 
 ## Build
 

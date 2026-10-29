@@ -74,4 +74,28 @@ public sealed partial class IndicatorViewModel : ObservableObject
 
     public static IndicatorViewModel DegradedConnection(string title) =>
         new(title, "Degraded", IndicatorKind.Warning, Freshness.Live, string.Empty);
+
+    public void Apply(string displayText, IndicatorKind kind, Freshness freshness)
+    {
+        DisplayText = string.IsNullOrWhiteSpace(displayText) ? "—" : displayText;
+        Kind = kind;
+        Freshness = freshness;
+        FreshnessCaption = CaptionFor(freshness);
+        IsStale = freshness == Freshness.Stale;
+        IsUnavailable = freshness == Freshness.Unavailable;
+    }
+
+    public void ApplyFromConnection(ChannelHealth health)
+    {
+        var (text, kind) = health.Link switch
+        {
+            LinkState.Connected => ("Connected", IndicatorKind.Normal),
+            LinkState.Connecting => ("Connecting", IndicatorKind.Warning),
+            LinkState.Reconnecting => ("Reconnecting", IndicatorKind.Warning),
+            LinkState.Faulted => ("Faulted", IndicatorKind.Fault),
+            _ => ("Disconnected", IndicatorKind.CommsLoss)
+        };
+
+        Apply(text, kind, Freshness.Live);
+    }
 }

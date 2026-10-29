@@ -37,6 +37,14 @@ public sealed partial class MainViewModel : ObservableObject
         CurrentModule = module;
     }
 
+    partial void OnCurrentViewModelChanging(object? value)
+    {
+        if (_currentViewModel is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+    }
+
     partial void OnCurrentModuleChanged(IWorkspaceModule? value)
     {
         CurrentViewModel = value?.CreateViewModel();
