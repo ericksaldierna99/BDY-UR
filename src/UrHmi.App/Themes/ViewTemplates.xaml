@@ -3,6 +3,7 @@
                     xmlns:views="clr-namespace:UrHmi.Ui.Views;assembly=UrHmi.Ui"
                     xmlns:alarms="clr-namespace:UrHmi.Presentation.Alarms;assembly=UrHmi.Presentation"
                     xmlns:dash="clr-namespace:UrHmi.Presentation.Dashboard;assembly=UrHmi.Presentation"
+                    xmlns:jems="clr-namespace:UrHmi.Presentation.Jems;assembly=UrHmi.Presentation"
                     xmlns:settings="clr-namespace:UrHmi.Presentation.Settings;assembly=UrHmi.Presentation"
                     xmlns:tools="clr-namespace:UrHmi.Presentation.Tools;assembly=UrHmi.Presentation">
   <DataTemplate DataType="{x:Type dash:DashboardViewModel}">
@@ -13,6 +14,9 @@
   </DataTemplate>
   <DataTemplate DataType="{x:Type tools:ToolsViewModel}">
     <views:ToolsView />
+  </DataTemplate>
+  <DataTemplate DataType="{x:Type jems:JemsViewModel}">
+    <views:JemsView />
   </DataTemplate>
   <DataTemplate DataType="{x:Type settings:SettingsViewModel}">
     <views:SettingsView />

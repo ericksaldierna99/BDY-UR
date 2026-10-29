@@ -9,4 +9,7 @@
     <ProjectReference Include="..\UrHmi.Presentation\UrHmi.Presentation.csproj" />
     <ProjectReference Include="..\UrHmi.Domain\UrHmi.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\ur-robot.jpg" />
+  </ItemGroup>
 </Project>

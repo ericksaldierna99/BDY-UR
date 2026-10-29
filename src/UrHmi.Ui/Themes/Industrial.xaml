@@ -26,29 +26,51 @@
     <Setter Property="Background" Value="{StaticResource Brush.Background}" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
     <Setter Property="FontFamily" Value="Segoe UI" />
-    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontSize" Value="16" />
   </Style>
 
   <Style x:Key="NavListBoxStyle" TargetType="ListBox">
     <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
-    <Setter Property="Padding" Value="8" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBox">
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  Padding="{TemplateBinding Padding}">
+            <ItemsPresenter />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <Style x:Key="NavItemStyle" TargetType="ListBoxItem">
-    <Setter Property="Padding" Value="12,10" />
-    <Setter Property="Margin" Value="0,0,0,4" />
+    <Setter Property="Padding" Value="16,18" />
+    <Setter Property="Margin" Value="4" />
+    <Setter Property="FontSize" Value="20" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ListBoxItem">
           <Border x:Name="Bd"
                   Background="{TemplateBinding Background}"
                   Padding="{TemplateBinding Padding}"
-                  CornerRadius="4">
-            <ContentPresenter />
+                  CornerRadius="8">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsSelected" Value="True">
@@ -64,7 +86,7 @@
   </Style>
 
   <Style x:Key="ModuleTitleStyle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="22" />
+    <Setter Property="FontSize" Value="28" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
     <Setter Property="Margin" Value="0,0,0,16" />
@@ -73,5 +95,63 @@
   <Style x:Key="BodyTextStyle" TargetType="TextBlock">
     <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
     <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="FontSize" Value="16" />
+  </Style>
+
+  <Style x:Key="DeviceCardStyle" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="28" />
+    <Setter Property="Margin" Value="0,0,20,20" />
+    <Setter Property="MinWidth" Value="420" />
+  </Style>
+
+  <Style x:Key="DeviceCardTitleStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="24" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+    <Setter Property="Margin" Value="0,0,0,12" />
+  </Style>
+
+  <Style x:Key="SettingLabelStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
+    <Setter Property="Margin" Value="0,14,0,8" />
+  </Style>
+
+  <Style x:Key="SettingFieldStyle" TargetType="TextBox">
+    <Setter Property="FontSize" Value="22" />
+    <Setter Property="Padding" Value="14,12" />
+    <Setter Property="IsReadOnly" Value="True" />
+    <Setter Property="Background" Value="{StaticResource Brush.SurfaceAlt}" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Brush.Muted}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CaretBrush" Value="{StaticResource Brush.Text}" />
+  </Style>
+
+  <Style x:Key="MetricCardStyle" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="20,16" />
+    <Setter Property="Margin" Value="0,12,12,0" />
+  </Style>
+
+  <Style x:Key="MetricLabelStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
+  </Style>
+
+  <Style x:Key="MetricValueStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="36" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+    <Setter Property="Margin" Value="0,8,0,4" />
+  </Style>
+
+  <Style x:Key="MetricCaptionStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
   </Style>
 </ResourceDictionary>

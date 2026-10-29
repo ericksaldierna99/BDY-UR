@@ -49,6 +49,13 @@ public sealed class DashboardViewModel : ObservableObject
             ActiveAlarms,
             LastUpdate
         ];
+
+        StationStatusText = "—";
+        StationStatusHint = "Stop · Idle · Running · Starving";
+        StationStatusCaption = "sin dato";
+        UphText = "—";
+        CurrentCycleTimeText = "—";
+        PreviousCycleTimeText = "—";
     }
 
     public IndicatorViewModel RobotConnection { get; }
@@ -76,6 +83,18 @@ public sealed class DashboardViewModel : ObservableObject
     public IndicatorViewModel LastUpdate { get; }
 
     public IReadOnlyList<IndicatorViewModel> Indicators { get; }
+
+    public string StationStatusText { get; }
+
+    public string StationStatusHint { get; }
+
+    public string StationStatusCaption { get; }
+
+    public string UphText { get; }
+
+    public string CurrentCycleTimeText { get; }
+
+    public string PreviousCycleTimeText { get; }
 
     private static IndicatorViewModel ProjectRobotConnection(ChannelHealth dashboard, ChannelHealth rtde)
     {

@@ -2,18 +2,19 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:UrHmi.Ui.Controls">
-  <DockPanel Margin="24">
-    <TextBlock DockPanel.Dock="Top"
-               Style="{DynamicResource ModuleTitleStyle}"
-               Text="Dashboard" />
-    <TextBlock DockPanel.Dock="Top"
-               Style="{DynamicResource BodyTextStyle}"
-               Margin="0,0,0,16"
-               Text="Process values stay unavailable until robot and PLC channels are implemented. Connection lamps reflect actual placeholder link state, not inferred robot status." />
-    <ItemsControl ItemsSource="{Binding Indicators}">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="2*" />
+      <RowDefinition Height="3*" MinHeight="280" />
+    </Grid.RowDefinitions>
+    <TextBlock Style="{DynamicResource ModuleTitleStyle}" Text="Dashboard" />
+    <ItemsControl Grid.Row="1"
+                  Margin="0,0,0,16"
+                  ItemsSource="{Binding Indicators}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
-          <WrapPanel />
+          <UniformGrid Columns="4" Rows="3" />
         </ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
@@ -26,5 +27,71 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-  </DockPanel>
+    <Grid Grid.Row="2">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*" />
+        <ColumnDefinition Width="3*" />
+      </Grid.ColumnDefinitions>
+      <Border Background="{DynamicResource Brush.Surface}"
+              CornerRadius="8"
+              Margin="8"
+              Padding="16">
+        <Image Source="pack://application:,,,/UrHmi.Ui;component/Assets/ur-robot.jpg"
+               Stretch="Uniform"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+      </Border>
+      <Grid Grid.Column="1" Margin="8,8,8,8">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Border Background="{DynamicResource Brush.Surface}"
+                CornerRadius="8"
+                Padding="24,16">
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock FontSize="16"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource Brush.Muted}"
+                       Text="Station status" />
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="72"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource Brush.Text}"
+                       Text="{Binding StationStatusText}" />
+            <TextBlock Margin="0,4,0,0"
+                       FontSize="20"
+                       Foreground="{DynamicResource Brush.Muted}"
+                       Text="{Binding StationStatusHint}" />
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="16"
+                       Foreground="{DynamicResource Brush.Muted}"
+                       Text="{Binding StationStatusCaption}" />
+          </StackPanel>
+        </Border>
+        <UniformGrid Grid.Row="1" Columns="3">
+          <Border Style="{DynamicResource MetricCardStyle}">
+            <StackPanel>
+              <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="UPH" />
+              <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding UphText}" />
+              <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="sin dato" />
+            </StackPanel>
+          </Border>
+          <Border Style="{DynamicResource MetricCardStyle}">
+            <StackPanel>
+              <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Current cycle time" />
+              <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding CurrentCycleTimeText}" />
+              <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="sin dato" />
+            </StackPanel>
+          </Border>
+          <Border Style="{DynamicResource MetricCardStyle}">
+            <StackPanel>
+              <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Previous cycle time" />
+              <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding PreviousCycleTimeText}" />
+              <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="sin dato" />
+            </StackPanel>
+          </Border>
+        </UniformGrid>
+      </Grid>
+    </Grid>
+  </Grid>
 </UserControl>

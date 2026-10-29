@@ -15,6 +15,7 @@ using UrHmi.Infrastructure.Robot;
 using UrHmi.Infrastructure.Secrets;
 using UrHmi.Presentation.Alarms;
 using UrHmi.Presentation.Dashboard;
+using UrHmi.Presentation.Jems;
 using UrHmi.Presentation.Navigation;
 using UrHmi.Presentation.Settings;
 using UrHmi.Presentation.Shell;
@@ -72,6 +73,7 @@ internal static class ServiceRegistration
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<AlarmsViewModel>();
         services.AddTransient<ToolsViewModel>();
+        services.AddTransient<JemsViewModel>();
         services.AddTransient<SettingsViewModel>();
 
         services.AddSingleton<IWorkspaceModule>(sp => new WorkspaceModule(
@@ -90,9 +92,14 @@ internal static class ServiceRegistration
             3,
             () => sp.GetRequiredService<ToolsViewModel>()));
         services.AddSingleton<IWorkspaceModule>(sp => new WorkspaceModule(
+            "jems",
+            "JEMS",
+            4,
+            () => sp.GetRequiredService<JemsViewModel>()));
+        services.AddSingleton<IWorkspaceModule>(sp => new WorkspaceModule(
             "settings",
             "Settings",
-            4,
+            5,
             () => sp.GetRequiredService<SettingsViewModel>()));
 
         services.AddSingleton<MainViewModel>();

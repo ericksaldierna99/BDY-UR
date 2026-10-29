@@ -1,8 +1,8 @@
 namespace UrHmi.Presentation.Navigation;
 
 /// <summary>
-/// Shell extension point. Specified modules register here. Spec section 5.4 is unspecified
-/// and must not get a fake screen; future modules implement this contract when a spec exists.
+/// Shell extension point. Specified modules register here. Confirmed placeholders such as JEMS
+/// may register an empty view. Spec section 5.4 stays unspecified.
 /// </summary>
 public interface IWorkspaceModule
 {
