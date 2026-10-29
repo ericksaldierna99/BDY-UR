@@ -3,6 +3,7 @@
     <RootNamespace>UrHmi.Presentation</RootNamespace>
     <AssemblyName>UrHmi.Presentation</AssemblyName>
     <Description>ViewModels and navigation. No WPF Dispatcher dependency.</Description>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\UrHmi.Application\UrHmi.Application.csproj" />

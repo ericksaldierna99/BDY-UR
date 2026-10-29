@@ -6,6 +6,9 @@ using UrHmi.Domain.Ports;
 
 namespace UrHmi.Presentation.Dashboard;
 
+/// <summary>
+/// Dashboard workspace ViewModel. Public so WPF <c>x:Type</c> DataTemplates can resolve it.
+/// </summary>
 public sealed class DashboardViewModel : ObservableObject
 {
     public DashboardViewModel(IRobotTelemetry robot, IPlcTelemetry plc, IAlarmStore alarms)

@@ -6,7 +6,7 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/UrHmi.Ui;component/Themes/Industrial.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/UrHmi.Ui;component/Themes/ViewTemplates.xaml" />
+        <ResourceDictionary Source="Themes/ViewTemplates.xaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

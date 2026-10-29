@@ -17,7 +17,7 @@ Spec section 5.4 is unspecified and has no screen.
 
 ## Build
 
-Requirements: .NET 10 SDK, Windows for running the WPF app. The solution targets `net10.0-windows` / x64.
+Requirements: any .NET 10 SDK (10.0.100 or later) and Windows to run the WPF app. `global.json` pins `10.0.100` with `rollForward: latestMinor` so Visual Studio can use whichever 10.x SDK is installed. The solution targets `net10.0-windows` / x64.
 
 ```bash
 dotnet restore UrHmi.slnx
