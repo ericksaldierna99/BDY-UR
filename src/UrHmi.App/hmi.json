@@ -1,6 +1,6 @@
 {
   "robot": {
-    "ip": "",
+    "ip": "192.168.37.105",
     "dashboard": {
       "port": 29999,
       "staleTimeoutMs": 2000

@@ -7,10 +7,12 @@ public sealed record HmiConfiguration(
     UiConfiguration Ui,
     bool SafeMode = false)
 {
+    public const string DefaultRobotIp = "192.168.37.105";
+
     public static HmiConfiguration CreateDefault(bool safeMode = false) =>
         new(
             new RobotConfiguration(
-                Ip: string.Empty,
+                Ip: DefaultRobotIp,
                 Dashboard: new DashboardChannelConfiguration(Port: 29999, StaleTimeoutMs: 2000),
                 Rtde: new RtdeChannelConfiguration(Port: 30004, StaleTimeoutMs: 200, RecipeId: "default")),
             new PlcConfiguration(

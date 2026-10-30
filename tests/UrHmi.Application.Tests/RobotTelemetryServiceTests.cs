@@ -20,7 +20,7 @@ public sealed class RobotTelemetryServiceTests
             dashboard,
             rtde,
             alarms,
-            HmiConfiguration.CreateDefault(),
+            Unconfigured(),
             NullLogger<RobotTelemetryService>.Instance);
 
         await sut.StartAsync(CancellationToken.None);
@@ -41,7 +41,7 @@ public sealed class RobotTelemetryServiceTests
             new FakeDashboardClient(),
             new FakeRtdeClient(),
             new FakeAlarmSink(),
-            HmiConfiguration.CreateDefault(),
+            Unconfigured(),
             NullLogger<RobotTelemetryService>.Instance);
 
         var probe = await sut.ProbeAsync();
@@ -49,6 +49,12 @@ public sealed class RobotTelemetryServiceTests
         Assert.False(probe.IpConfigured);
         Assert.Contains("robot.ip is not set", probe.Summary, StringComparison.Ordinal);
     }
+
+    private static HmiConfiguration Unconfigured() =>
+        HmiConfiguration.CreateDefault() with
+        {
+            Robot = HmiConfiguration.CreateDefault().Robot with { Ip = string.Empty }
+        };
 
     private sealed class FakeDashboardClient : IRobotDashboardClient
     {

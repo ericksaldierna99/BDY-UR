@@ -10,9 +10,11 @@ public sealed class HmiConfigurationValidatorTests
     [Fact]
     public void Default_configuration_is_valid()
     {
-        var errors = _validator.Validate(HmiConfiguration.CreateDefault());
+        var config = HmiConfiguration.CreateDefault();
+        var errors = _validator.Validate(config);
 
         Assert.Empty(errors);
+        Assert.Equal(HmiConfiguration.DefaultRobotIp, config.Robot.Ip);
     }
 
     [Fact]

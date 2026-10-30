@@ -63,7 +63,7 @@ public sealed class JsonFileConfigStoreTests
             var loaded = await store.LoadAsync();
 
             Assert.True(loaded.SafeMode);
-            Assert.Equal(string.Empty, loaded.Robot.Ip);
+            Assert.Equal(HmiConfiguration.DefaultRobotIp, loaded.Robot.Ip);
         }
         finally
         {

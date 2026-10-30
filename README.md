@@ -13,7 +13,7 @@ Dashboard Server (TCP 29999) and RTDE (TCP 30004, protocol v2) are wired for UR1
 
 Spec section 5.4 is unspecified and has no screen. Play/stop/move are not implemented.
 
-Set `robot.ip` in `hmi.json` on the HMI PC. An empty IP does not open sockets.
+Default `robot.ip` is `192.168.37.105` (lab UR12e). An empty IP does not open sockets.
 
 ## Build
 
