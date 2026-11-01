@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/UrHmi.App/UrHmi.App.csproj" />
+    <Project Path="src/UrHmi.Application/UrHmi.Application.csproj" />
+    <Project Path="src/UrHmi.Domain/UrHmi.Domain.csproj" />
+    <Project Path="src/UrHmi.Infrastructure/UrHmi.Infrastructure.csproj" />
+    <Project Path="src/UrHmi.Presentation/UrHmi.Presentation.csproj" />
+    <Project Path="src/UrHmi.Tools.Abstractions/UrHmi.Tools.Abstractions.csproj" />
+    <Project Path="src/UrHmi.Ui/UrHmi.Ui.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UrHmi.Application.Tests/UrHmi.Application.Tests.csproj" />
+    <Project Path="tests/UrHmi.Domain.Tests/UrHmi.Domain.Tests.csproj" />
+    <Project Path="tests/UrHmi.Infrastructure.Tests/UrHmi.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

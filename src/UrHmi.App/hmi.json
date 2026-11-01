@@ -1,0 +1,30 @@
+{
+  "robot": {
+    "ip": "192.168.37.105",
+    "dashboard": {
+      "port": 29999,
+      "staleTimeoutMs": 2000
+    },
+    "rtde": {
+      "port": 30004,
+      "staleTimeoutMs": 200,
+      "recipeId": "default"
+    },
+    "urscript": {
+      "port": 30002,
+      "fallbackPort": 30001
+    }
+  },
+  "plc": {
+    "ip": "",
+    "transport": "simulator",
+    "staleTimeoutMs": 1000
+  },
+  "tools": {
+    "selectedId": null,
+    "enabled": []
+  },
+  "ui": {
+    "theme": "industrial"
+  }
+}

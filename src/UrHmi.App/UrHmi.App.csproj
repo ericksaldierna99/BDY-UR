@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>UrHmi.App</RootNamespace>
+    <AssemblyName>UrHmi.App</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationTitle>UR Robot Interfaz</ApplicationTitle>
+    <Description>WPF startup project, composition root, and host.</Description>
+    <StartupObject>UrHmi.App.App</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UrHmi.Ui\UrHmi.Ui.csproj" />
+    <ProjectReference Include="..\UrHmi.Presentation\UrHmi.Presentation.csproj" />
+    <ProjectReference Include="..\UrHmi.Application\UrHmi.Application.csproj" />
+    <ProjectReference Include="..\UrHmi.Infrastructure\UrHmi.Infrastructure.csproj" />
+    <ProjectReference Include="..\UrHmi.Tools.Abstractions\UrHmi.Tools.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Hosting" />
+    <PackageReference Include="Serilog.Sinks.Debug" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="hmi.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,308 @@
+<UserControl x:Class="UrHmi.Ui.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:UrHmi.Ui.Controls">
+  <UserControl.InputBindings>
+    <KeyBinding Key="Escape" Command="{Binding CloseTopDialogCommand}" />
+  </UserControl.InputBindings>
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+  </UserControl.Resources>
+  <Grid>
+    <Grid Margin="12,8,12,8">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="3*" />
+        <RowDefinition Height="5*" />
+      </Grid.RowDefinitions>
+      <TextBlock Style="{DynamicResource ModuleTitleStyle}" Text="Dashboard" />
+      <ItemsControl Grid.Row="1"
+                    Margin="0,0,0,6"
+                    ItemsSource="{Binding Indicators}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="3" Rows="2" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <controls:StatusIndicator Title="{Binding Title}"
+                                      ValueText="{Binding DisplayText}"
+                                      Kind="{Binding Kind}"
+                                      Freshness="{Binding Freshness}"
+                                      FreshnessCaption="{Binding FreshnessCaption}"
+                                      Command="{Binding Command}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <Grid Grid.Row="2">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="2*" />
+          <ColumnDefinition Width="3*" />
+        </Grid.ColumnDefinitions>
+        <Border Background="{DynamicResource Brush.Surface}"
+                CornerRadius="6"
+                Margin="4"
+                Padding="8">
+          <Image Source="pack://application:,,,/UrHmi.Ui;component/Assets/ur-robot.png"
+                 Stretch="Uniform"
+                 RenderOptions.BitmapScalingMode="HighQuality" />
+        </Border>
+        <Grid Grid.Column="1" Margin="4">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <Border Background="{DynamicResource Brush.Surface}"
+                  CornerRadius="6"
+                  Padding="16,12">
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock FontSize="18"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource Brush.Muted}"
+                         Text="Station status" />
+              <TextBlock Margin="0,4,0,0"
+                         FontSize="56"
+                         FontWeight="Bold"
+                         Foreground="{DynamicResource Brush.Text}"
+                         Text="{Binding StationStatusText}" />
+              <TextBlock Margin="0,4,0,0"
+                         FontSize="16"
+                         Foreground="{DynamicResource Brush.Muted}"
+                         Text="{Binding StationStatusHint}" />
+              <TextBlock Margin="0,4,0,0"
+                         FontSize="13"
+                         Foreground="{DynamicResource Brush.Muted}"
+                         Text="{Binding StationStatusCaption}" />
+            </StackPanel>
+          </Border>
+          <UniformGrid Grid.Row="1" Columns="2">
+            <Border Style="{DynamicResource CompactMetricCardStyle}">
+              <StackPanel>
+                <TextBlock Style="{DynamicResource CompactMetricLabelStyle}" Text="{Binding TcpPosition.Title}" />
+                <TextBlock Style="{DynamicResource CompactMetricValueStyle}" Text="{Binding TcpPosition.DisplayText}" />
+                <TextBlock Style="{DynamicResource CompactMetricCaptionStyle}" Text="{Binding TcpPosition.FreshnessCaption}" />
+              </StackPanel>
+            </Border>
+            <Border Style="{DynamicResource CompactMetricCardStyle}">
+              <StackPanel>
+                <TextBlock Style="{DynamicResource CompactMetricLabelStyle}" Text="{Binding TcpSpeed.Title}" />
+                <TextBlock Style="{DynamicResource CompactMetricValueStyle}" Text="{Binding TcpSpeed.DisplayText}" />
+                <TextBlock Style="{DynamicResource CompactMetricCaptionStyle}" Text="{Binding TcpSpeed.FreshnessCaption}" />
+              </StackPanel>
+            </Border>
+          </UniformGrid>
+          <UniformGrid Grid.Row="2" Columns="3">
+            <Border Style="{DynamicResource MetricCardStyle}">
+              <StackPanel>
+                <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="UPH" />
+                <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding UphText}" />
+                <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="sin dato" />
+              </StackPanel>
+            </Border>
+            <Border Style="{DynamicResource MetricCardStyle}">
+              <StackPanel>
+                <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Current cycle time" />
+                <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding CurrentCycleTimeText}" />
+                <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="sin dato" />
+              </StackPanel>
+            </Border>
+            <Border Style="{DynamicResource MetricCardStyle}">
+              <StackPanel>
+                <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Previous cycle time" />
+                <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding PreviousCycleTimeText}" />
+                <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="sin dato" />
+              </StackPanel>
+            </Border>
+          </UniformGrid>
+        </Grid>
+      </Grid>
+    </Grid>
+    <Grid Background="#CC1B1F24"
+          Visibility="{Binding IsActiveAlarmsDialogOpen, Converter={StaticResource BoolToVisibility}}">
+      <Border Style="{DynamicResource DialogCardStyle}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <DockPanel Grid.IsSharedSizeScope="True">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right"
+                    Style="{DynamicResource SettingButtonStyle}"
+                    Content="Close"
+                    Command="{Binding CloseActiveAlarmsCommand}" />
+            <TextBlock Style="{DynamicResource ModuleTitleStyle}"
+                       Margin="0"
+                       VerticalAlignment="Center"
+                       Text="Active alarms" />
+          </DockPanel>
+          <TextBlock DockPanel.Dock="Top"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Margin="0,0,0,8"
+                     Text="{Binding ActiveAlarmsEmptyMessage}"
+                     Visibility="{Binding HasNoActiveAlarms, Converter={StaticResource BoolToVisibility}}" />
+          <Grid DockPanel.Dock="Top">
+            <Grid.Style>
+              <Style TargetType="Grid">
+                <Setter Property="Visibility" Value="Visible" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasNoActiveAlarms}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Grid.Style>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="200" SharedSizeGroup="AlarmOrigin" />
+              <ColumnDefinition Width="88" SharedSizeGroup="AlarmTime" />
+              <ColumnDefinition Width="*" SharedSizeGroup="AlarmDescription" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{DynamicResource DialogColumnHeaderStyle}" Text="Origin" />
+            <TextBlock Grid.Column="1" Style="{DynamicResource DialogColumnHeaderStyle}" Text="Time" />
+            <TextBlock Grid.Column="2" Style="{DynamicResource DialogColumnHeaderStyle}" Text="Description" />
+          </Grid>
+          <ScrollViewer VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
+                        MaxHeight="280">
+            <ItemsControl ItemsSource="{Binding ActiveAlarmItems}"
+                          HorizontalContentAlignment="Stretch">
+              <ItemsControl.Style>
+                <Style TargetType="ItemsControl">
+                  <Setter Property="Visibility" Value="Visible" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasNoActiveAlarms}" Value="True">
+                      <Setter Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </ItemsControl.Style>
+              <ItemsControl.ItemContainerStyle>
+                <Style TargetType="ContentPresenter">
+                  <Setter Property="HorizontalAlignment" Value="Stretch" />
+                </Style>
+              </ItemsControl.ItemContainerStyle>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="200" SharedSizeGroup="AlarmOrigin" />
+                      <ColumnDefinition Width="88" SharedSizeGroup="AlarmTime" />
+                      <ColumnDefinition Width="*" SharedSizeGroup="AlarmDescription" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{DynamicResource DialogCellStyle}"
+                               Text="{Binding Origin}" />
+                    <TextBlock Grid.Column="1"
+                               Style="{DynamicResource DialogCellStyle}"
+                               Text="{Binding Time}" />
+                    <TextBlock Grid.Column="2"
+                               Style="{DynamicResource DialogCellStyle}"
+                               Text="{Binding Description}"
+                               TextWrapping="Wrap"
+                               TextTrimming="None" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+    <Grid Background="#CC1B1F24"
+          Visibility="{Binding IsRobotJogOpen, Converter={StaticResource BoolToVisibility}}">
+      <Border Style="{DynamicResource DialogCardStyle}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              MinWidth="560"
+              MaxWidth="720">
+        <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right"
+                    Style="{DynamicResource SettingButtonStyle}"
+                    Content="Close"
+                    Command="{Binding CloseRobotJogCommand}" />
+            <TextBlock Style="{DynamicResource ModuleTitleStyle}"
+                       Margin="0"
+                       VerticalAlignment="Center"
+                       Text="Robot JOG" />
+          </DockPanel>
+          <TextBlock DockPanel.Dock="Bottom"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Margin="0,12,0,0"
+                     Text="{Binding JogStatusText}" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ItemsControl ItemsSource="{Binding JogSlots}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Style="{DynamicResource JogPositionButtonStyle}"
+                          Command="{Binding DataContext.OpenSavePositionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          CommandParameter="{Binding Slot}">
+                    <StackPanel>
+                      <TextBlock FontSize="15" FontWeight="SemiBold" Text="{Binding Title}" />
+                      <TextBlock FontSize="11"
+                                 Foreground="{DynamicResource Brush.Muted}"
+                                 Text="{Binding Caption}" />
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Grid.Column="1"
+                    Style="{DynamicResource JogBrakeButtonStyle}"
+                    Content="Brake release"
+                    Command="{Binding ReleaseBrakesCommand}" />
+          </Grid>
+        </DockPanel>
+      </Border>
+    </Grid>
+    <Grid Background="#CC1B1F24"
+          Visibility="{Binding IsSavePositionOpen, Converter={StaticResource BoolToVisibility}}">
+      <Border Style="{DynamicResource DialogCardStyle}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              MinWidth="480"
+              MaxWidth="620">
+        <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right"
+                    Style="{DynamicResource SettingButtonStyle}"
+                    Content="Close"
+                    Command="{Binding CloseSavePositionCommand}" />
+            <TextBlock Style="{DynamicResource ModuleTitleStyle}"
+                       Margin="0"
+                       VerticalAlignment="Center"
+                       Text="{Binding SelectedJogTitle}" />
+          </DockPanel>
+          <TextBlock DockPanel.Dock="Top"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Margin="0,0,0,8"
+                     Text="Stored coordinates" />
+          <TextBlock DockPanel.Dock="Top"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Foreground="{DynamicResource Brush.Text}"
+                     FontFamily="Consolas"
+                     Text="{Binding StoredCoordinatesText}" />
+          <TextBlock DockPanel.Dock="Bottom"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Margin="0,12,0,0"
+                     Text="{Binding JogStatusText}" />
+          <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+            <Button Style="{DynamicResource SettingButtonStyle}"
+                    Content="Save current TCP/joints"
+                    Command="{Binding SaveCurrentPositionCommand}" />
+            <Button Style="{DynamicResource SettingButtonStyle}"
+                    Content="Go to saved pose"
+                    Command="{Binding GoToSavedPositionCommand}" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>
