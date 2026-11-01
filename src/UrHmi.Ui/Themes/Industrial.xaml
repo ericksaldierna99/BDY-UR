@@ -189,8 +189,8 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Padding" Value="20,16" />
-    <Setter Property="MinWidth" Value="560" />
-    <Setter Property="MaxWidth" Value="760" />
+    <Setter Property="MinWidth" Value="640" />
+    <Setter Property="MaxWidth" Value="820" />
     <Setter Property="MaxHeight" Value="480" />
   </Style>
 
@@ -198,6 +198,15 @@
     <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
+    <Setter Property="Margin" Value="0,0,16,4" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+  </Style>
+
+  <Style x:Key="DialogCellStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+    <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+    <Setter Property="Margin" Value="0,0,16,8" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
   </Style>
 </ResourceDictionary>
 

@@ -48,10 +48,22 @@ public sealed class ActiveAlarmListTests
 
         Assert.Equal(2, rows.Count);
         Assert.Equal("Robot communication", rows[0].Origin);
-        Assert.Equal("2026-10-29 12:01:00 UTC", rows[0].Time);
         Assert.Equal("RTDE channel is not connected.", rows[0].Description);
-        Assert.Equal("2026-10-29 12:00:00 UTC", rows[1].Time);
         Assert.DoesNotContain(rows, row => row.Description.Contains("Should not appear", StringComparison.Ordinal));
+        Assert.Matches(@"^\d{2}:\d{2}:\d{2}$", rows[0].Time);
+        Assert.DoesNotContain("UTC", rows[0].Time, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("-", rows[0].Time, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Formats_computer_local_time_of_day_only()
+    {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("lab", TimeSpan.FromHours(-6), "lab", "lab");
+        var raised = DateTimeOffset.Parse("2026-10-29T18:01:09Z");
+
+        var text = ActiveAlarmList.FormatTime(raised, zone);
+
+        Assert.Equal("12:01:09", text);
     }
 
     [Theory]

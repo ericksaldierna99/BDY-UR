@@ -124,7 +124,7 @@
       <Border Style="{DynamicResource DialogCardStyle}"
               HorizontalAlignment="Center"
               VerticalAlignment="Center">
-        <DockPanel>
+        <DockPanel Grid.IsSharedSizeScope="True">
           <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <Button DockPanel.Dock="Right"
                     Style="{DynamicResource SettingButtonStyle}"
@@ -140,7 +140,7 @@
                      Margin="0,0,0,8"
                      Text="{Binding ActiveAlarmsEmptyMessage}"
                      Visibility="{Binding HasNoActiveAlarms, Converter={StaticResource BoolToVisibility}}" />
-          <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+          <Grid DockPanel.Dock="Top">
             <Grid.Style>
               <Style TargetType="Grid">
                 <Setter Property="Visibility" Value="Visible" />
@@ -152,16 +152,19 @@
               </Style>
             </Grid.Style>
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="1.4*" />
-              <ColumnDefinition Width="1.6*" />
-              <ColumnDefinition Width="2.4*" />
+              <ColumnDefinition Width="200" SharedSizeGroup="AlarmOrigin" />
+              <ColumnDefinition Width="88" SharedSizeGroup="AlarmTime" />
+              <ColumnDefinition Width="*" SharedSizeGroup="AlarmDescription" />
             </Grid.ColumnDefinitions>
             <TextBlock Style="{DynamicResource DialogColumnHeaderStyle}" Text="Origin" />
             <TextBlock Grid.Column="1" Style="{DynamicResource DialogColumnHeaderStyle}" Text="Time" />
             <TextBlock Grid.Column="2" Style="{DynamicResource DialogColumnHeaderStyle}" Text="Description" />
           </Grid>
-          <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="280">
-            <ItemsControl ItemsSource="{Binding ActiveAlarmItems}">
+          <ScrollViewer VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
+                        MaxHeight="280">
+            <ItemsControl ItemsSource="{Binding ActiveAlarmItems}"
+                          HorizontalContentAlignment="Stretch">
               <ItemsControl.Style>
                 <Style TargetType="ItemsControl">
                   <Setter Property="Visibility" Value="Visible" />
@@ -172,27 +175,29 @@
                   </Style.Triggers>
                 </Style>
               </ItemsControl.Style>
+              <ItemsControl.ItemContainerStyle>
+                <Style TargetType="ContentPresenter">
+                  <Setter Property="HorizontalAlignment" Value="Stretch" />
+                </Style>
+              </ItemsControl.ItemContainerStyle>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Grid Margin="0,0,0,8">
+                  <Grid>
                     <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="1.4*" />
-                      <ColumnDefinition Width="1.6*" />
-                      <ColumnDefinition Width="2.4*" />
+                      <ColumnDefinition Width="200" SharedSizeGroup="AlarmOrigin" />
+                      <ColumnDefinition Width="88" SharedSizeGroup="AlarmTime" />
+                      <ColumnDefinition Width="*" SharedSizeGroup="AlarmDescription" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Style="{DynamicResource BodyTextStyle}"
-                               Foreground="{DynamicResource Brush.Text}"
-                               Text="{Binding Origin}"
-                               TextWrapping="Wrap" />
+                    <TextBlock Style="{DynamicResource DialogCellStyle}"
+                               Text="{Binding Origin}" />
                     <TextBlock Grid.Column="1"
-                               Style="{DynamicResource BodyTextStyle}"
-                               Foreground="{DynamicResource Brush.Text}"
+                               Style="{DynamicResource DialogCellStyle}"
                                Text="{Binding Time}" />
                     <TextBlock Grid.Column="2"
-                               Style="{DynamicResource BodyTextStyle}"
-                               Foreground="{DynamicResource Brush.Text}"
+                               Style="{DynamicResource DialogCellStyle}"
                                Text="{Binding Description}"
-                               TextWrapping="Wrap" />
+                               TextWrapping="Wrap"
+                               TextTrimming="None" />
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

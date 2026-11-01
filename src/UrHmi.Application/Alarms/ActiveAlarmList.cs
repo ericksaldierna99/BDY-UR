@@ -32,5 +32,12 @@ public static class ActiveAlarmList
     };
 
     public static string FormatTime(DateTimeOffset raisedUtc) =>
-        raisedUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + " UTC";
+        FormatTime(raisedUtc, TimeZoneInfo.Local);
+
+    public static string FormatTime(DateTimeOffset raisedUtc, TimeZoneInfo timeZone)
+    {
+        ArgumentNullException.ThrowIfNull(timeZone);
+        var local = TimeZoneInfo.ConvertTime(raisedUtc, timeZone);
+        return local.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+    }
 }
