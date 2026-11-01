@@ -1,7 +1,11 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using UrHmi.Application.Alarms;
 using UrHmi.Application.Observables;
 using UrHmi.Application.Telemetry;
 using UrHmi.Domain;
+using UrHmi.Domain.Alarms;
 using UrHmi.Domain.Indicators;
 using UrHmi.Domain.Plc;
 using UrHmi.Domain.Ports;
@@ -13,8 +17,10 @@ namespace UrHmi.Presentation.Dashboard;
 /// <summary>
 /// Dashboard workspace ViewModel. Public so WPF <c>x:Type</c> DataTemplates can resolve it.
 /// </summary>
-public sealed class DashboardViewModel : ObservableObject, IDisposable
+public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 {
+    private static readonly AlarmQuery ActiveQuery = new(null, null, null, null, null, IsActive: true);
+
     private readonly IUiDispatcher _dispatcher;
     private readonly IAlarmStore _alarms;
     private readonly IDisposable _robotSubscription;
@@ -32,6 +38,7 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
         ActiveFault = IndicatorViewModel.Unavailable("Active Fault");
         PlcConnection = IndicatorViewModel.Unavailable("PLC Connection");
         ActiveAlarms = IndicatorViewModel.Unavailable("Active Alarms");
+        ActiveAlarms.Command = OpenActiveAlarmsCommand;
         TcpPosition = IndicatorViewModel.Unavailable("TCP Position");
         TcpSpeed = IndicatorViewModel.Unavailable("TCP Speed");
         Indicators =
@@ -88,6 +95,16 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
 
     public string PreviousCycleTimeText { get; }
 
+    public string ActiveAlarmsEmptyMessage => "No active alarms.";
+
+    public ObservableCollection<ActiveAlarmRow> ActiveAlarmItems { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNoActiveAlarms))]
+    private bool _isActiveAlarmsDialogOpen;
+
+    public bool HasNoActiveAlarms => ActiveAlarmItems.Count == 0;
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
@@ -97,6 +114,19 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
 
         _robotSubscription.Dispose();
         _plcSubscription.Dispose();
+    }
+
+    [RelayCommand]
+    private void OpenActiveAlarms()
+    {
+        RefreshActiveAlarms();
+        IsActiveAlarmsDialogOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseActiveAlarms()
+    {
+        IsActiveAlarmsDialogOpen = false;
     }
 
     private void Apply(RobotSnapshot robot, PlcSnapshot plc, int activeAlarms)
@@ -136,6 +166,24 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
             RobotDashboardProjection.FormatTcpSpeed(robot.TcpSpeed),
             IndicatorKind.Normal,
             robot.TcpSpeed.Freshness);
+
+        if (IsActiveAlarmsDialogOpen)
+        {
+            RefreshActiveAlarms();
+        }
+    }
+
+    private void RefreshActiveAlarms()
+    {
+        var records = _alarms.QueryAsync(ActiveQuery).GetAwaiter().GetResult();
+        var rows = ActiveAlarmList.Project(records);
+        ActiveAlarmItems.Clear();
+        foreach (var row in rows)
+        {
+            ActiveAlarmItems.Add(row);
+        }
+
+        OnPropertyChanged(nameof(HasNoActiveAlarms));
     }
 
     private void OnUi(Action action)

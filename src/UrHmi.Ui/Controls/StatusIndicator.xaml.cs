@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using UrHmi.Domain;
 using UrHmi.Domain.Indicators;
@@ -38,10 +39,17 @@ public partial class StatusIndicator : UserControl
         typeof(StatusIndicator),
         new PropertyMetadata(string.Empty, OnVisualStateChanged));
 
+    public static readonly DependencyProperty CommandProperty = DependencyProperty.Register(
+        nameof(Command),
+        typeof(ICommand),
+        typeof(StatusIndicator),
+        new PropertyMetadata(null, OnVisualStateChanged));
+
     public StatusIndicator()
     {
         InitializeComponent();
         Loaded += (_, _) => ApplyVisualState();
+        MouseLeftButtonUp += OnMouseLeftButtonUp;
     }
 
     public string Title
@@ -74,6 +82,12 @@ public partial class StatusIndicator : UserControl
         set => SetValue(FreshnessCaptionProperty, value);
     }
 
+    public ICommand? Command
+    {
+        get => (ICommand?)GetValue(CommandProperty);
+        set => SetValue(CommandProperty, value);
+    }
+
     private static void OnVisualStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is StatusIndicator indicator)
@@ -92,6 +106,7 @@ public partial class StatusIndicator : UserControl
         TitleText.Text = Title;
         ValueTextBlock.Text = string.IsNullOrWhiteSpace(ValueText) ? "—" : ValueText;
         FreshnessText.Text = FreshnessCaption;
+        Cursor = Command is null ? Cursors.Arrow : Cursors.Hand;
 
         var kindBrush = KindBrush(Kind);
         KindMark.Fill = kindBrush;
@@ -122,4 +137,18 @@ public partial class StatusIndicator : UserControl
         IndicatorKind.CommsLoss => (Brush)FindResource("Brush.CommsLoss"),
         _ => (Brush)FindResource("Brush.Muted")
     };
+
+    private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (Command is null)
+        {
+            return;
+        }
+
+        if (Command.CanExecute(null))
+        {
+            Command.Execute(null);
+            e.Handled = true;
+        }
+    }
 }

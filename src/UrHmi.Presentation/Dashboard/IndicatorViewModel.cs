@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using UrHmi.Domain;
 using UrHmi.Domain.Indicators;
@@ -23,6 +24,10 @@ public sealed partial class IndicatorViewModel : ObservableObject
     }
 
     public string Title { get; }
+
+    public ICommand? Command { get; set; }
+
+    public bool IsClickable => Command is not null;
 
     [ObservableProperty]
     private string _displayText;

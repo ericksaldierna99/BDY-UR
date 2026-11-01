@@ -182,5 +182,23 @@
   <Style x:Key="CompactMetricCaptionStyle" TargetType="TextBlock" BasedOn="{StaticResource MetricCaptionStyle}">
     <Setter Property="FontSize" Value="9" />
   </Style>
+
+  <Style x:Key="DialogCardStyle" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Brush.Muted}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="20,16" />
+    <Setter Property="MinWidth" Value="560" />
+    <Setter Property="MaxWidth" Value="760" />
+    <Setter Property="MaxHeight" Value="480" />
+  </Style>
+
+  <Style x:Key="DialogColumnHeaderStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
+  </Style>
 </ResourceDictionary>
+
 
