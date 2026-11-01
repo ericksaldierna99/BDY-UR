@@ -14,7 +14,8 @@ public sealed record HmiConfiguration(
             new RobotConfiguration(
                 Ip: DefaultRobotIp,
                 Dashboard: new DashboardChannelConfiguration(Port: 29999, StaleTimeoutMs: 2000),
-                Rtde: new RtdeChannelConfiguration(Port: 30004, StaleTimeoutMs: 200, RecipeId: "default")),
+                Rtde: new RtdeChannelConfiguration(Port: 30004, StaleTimeoutMs: 200, RecipeId: "default"),
+                UrScript: new UrScriptChannelConfiguration(Port: 30002, FallbackPort: 30001)),
             new PlcConfiguration(
                 Ip: string.Empty,
                 Transport: "simulator",
@@ -27,11 +28,14 @@ public sealed record HmiConfiguration(
 public sealed record RobotConfiguration(
     string Ip,
     DashboardChannelConfiguration Dashboard,
-    RtdeChannelConfiguration Rtde);
+    RtdeChannelConfiguration Rtde,
+    UrScriptChannelConfiguration UrScript);
 
 public sealed record DashboardChannelConfiguration(int Port, int StaleTimeoutMs);
 
 public sealed record RtdeChannelConfiguration(int Port, int StaleTimeoutMs, string RecipeId);
+
+public sealed record UrScriptChannelConfiguration(int Port, int FallbackPort);
 
 public sealed record PlcConfiguration(string Ip, string Transport, int StaleTimeoutMs);
 

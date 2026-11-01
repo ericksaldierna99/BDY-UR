@@ -8,6 +8,7 @@ public static class DefaultRtdeOutputs
 {
     public const string Timestamp = "timestamp";
     public const string ActualTcpPose = "actual_TCP_pose";
+    public const string ActualQ = "actual_q";
     public const string ActualTcpSpeed = "actual_TCP_speed";
     public const string RobotMode = "robot_mode";
     public const string SafetyStatus = "safety_status";
@@ -21,6 +22,7 @@ public static class DefaultRtdeOutputs
     [
         Timestamp,
         ActualTcpPose,
+        ActualQ,
         ActualTcpSpeed,
         RobotMode,
         SafetyStatus,

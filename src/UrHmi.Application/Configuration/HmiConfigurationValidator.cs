@@ -22,6 +22,8 @@ public sealed class HmiConfigurationValidator
         ValidatePositive(configuration.Robot.Dashboard.StaleTimeoutMs, "robot.dashboard.staleTimeoutMs", errors);
         ValidatePort(configuration.Robot.Rtde.Port, "robot.rtde.port", errors);
         ValidatePositive(configuration.Robot.Rtde.StaleTimeoutMs, "robot.rtde.staleTimeoutMs", errors);
+        ValidatePort(configuration.Robot.UrScript.Port, "robot.urscript.port", errors);
+        ValidatePort(configuration.Robot.UrScript.FallbackPort, "robot.urscript.fallbackPort", errors);
         if (string.IsNullOrWhiteSpace(configuration.Robot.Rtde.RecipeId))
         {
             errors.Add("robot.rtde.recipeId is required.");

@@ -138,7 +138,8 @@ public sealed class JsonFileConfigStore : IConfigStore
                 new RobotConfiguration(
                     Robot.Ip ?? string.Empty,
                     new DashboardChannelConfiguration(Robot.Dashboard.Port, Robot.Dashboard.StaleTimeoutMs),
-                    new RtdeChannelConfiguration(Robot.Rtde.Port, Robot.Rtde.StaleTimeoutMs, Robot.Rtde.RecipeId)),
+                    new RtdeChannelConfiguration(Robot.Rtde.Port, Robot.Rtde.StaleTimeoutMs, Robot.Rtde.RecipeId),
+                    new UrScriptChannelConfiguration(Robot.UrScript.Port, Robot.UrScript.FallbackPort)),
                 new PlcConfiguration(Plc.Ip ?? string.Empty, Plc.Transport, Plc.StaleTimeoutMs),
                 new ToolsConfiguration(Tools.SelectedId, Tools.Enabled ?? Array.Empty<string>()),
                 new UiConfiguration(Ui.Theme));
@@ -159,6 +160,11 @@ public sealed class JsonFileConfigStore : IConfigStore
                         Port = configuration.Robot.Rtde.Port,
                         StaleTimeoutMs = configuration.Robot.Rtde.StaleTimeoutMs,
                         RecipeId = configuration.Robot.Rtde.RecipeId
+                    },
+                    UrScript = new UrScriptJson
+                    {
+                        Port = configuration.Robot.UrScript.Port,
+                        FallbackPort = configuration.Robot.UrScript.FallbackPort
                     }
                 },
                 Plc = new PlcJson
@@ -181,6 +187,7 @@ public sealed class JsonFileConfigStore : IConfigStore
         public string? Ip { get; init; }
         public DashboardJson Dashboard { get; init; } = new();
         public RtdeJson Rtde { get; init; } = new();
+        public UrScriptJson UrScript { get; init; } = new();
     }
 
     private sealed class DashboardJson
@@ -194,6 +201,12 @@ public sealed class JsonFileConfigStore : IConfigStore
         public int Port { get; init; } = 30004;
         public int StaleTimeoutMs { get; init; } = 200;
         public string RecipeId { get; init; } = "default";
+    }
+
+    private sealed class UrScriptJson
+    {
+        public int Port { get; init; } = 30002;
+        public int FallbackPort { get; init; } = 30001;
     }
 
     private sealed class PlcJson

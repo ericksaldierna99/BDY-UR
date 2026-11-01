@@ -22,4 +22,11 @@ public sealed record TcpPose(
 
     public string ToDisplayString() =>
         string.Create(CultureInfo.InvariantCulture, $"{X:0.000}, {Y:0.000}, {Z:0.000} m");
+
+    public string ToJogDisplayString() =>
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"X={X:0.000}  Y={Y:0.000}  Z={Z:0.000} m{Environment.NewLine}Rx={Rx:0.000}  Ry={Ry:0.000}  Rz={Rz:0.000} rad");
+
+    public IReadOnlyList<double> ToVector() => [X, Y, Z, Rx, Ry, Rz];
 }

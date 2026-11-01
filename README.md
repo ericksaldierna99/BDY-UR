@@ -10,8 +10,9 @@ Dashboard Server (TCP 29999) and RTDE (TCP 30004, protocol v2) are wired for UR1
 - Dashboard tiles that have a robot source use controller data; PLC, station status, UPH, and cycle times stay placeholders.
 - Settings includes connection diagnostics (link, sample age, last error, Test connection, Reconnect).
 - Communication alarms increment the Dashboard active-alarm count. Alarm history/CSV is a later phase.
+- When Robot Connection is linked (Dashboard or RTDE connected), clicking the tile opens **Robot JOG**: ten Position buttons, a Save position dialog (save current live TCP/joints, go to the saved pose, stored coordinates), and Brake release beside the buttons. Confirmations first. Nothing is sent if the robot is disconnected. Poses persist in `jog-poses.json` (no secrets). Motion uses URScript on 30002 (fallback 30001); brake release uses Dashboard `brakeRelease`.
 
-Spec section 5.4 is unspecified and has no screen. Play/stop/move are not implemented.
+Spec section 5.4 is unspecified and has no screen. Program play/stop is not implemented.
 
 Default `robot.ip` is `192.168.37.105` (lab UR12e). An empty IP does not open sockets.
 

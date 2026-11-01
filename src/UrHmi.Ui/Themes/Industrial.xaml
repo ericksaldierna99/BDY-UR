@@ -208,6 +208,22 @@
     <Setter Property="TextWrapping" Value="NoWrap" />
     <Setter Property="TextTrimming" Value="CharacterEllipsis" />
   </Style>
+
+  <Style x:Key="JogPositionButtonStyle" TargetType="Button" BasedOn="{StaticResource SettingButtonStyle}">
+    <Setter Property="Margin" Value="4" />
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="MinHeight" Value="52" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+  </Style>
+
+  <Style x:Key="JogBrakeButtonStyle" TargetType="Button" BasedOn="{StaticResource SettingButtonStyle}">
+    <Setter Property="Margin" Value="12,4,0,4" />
+    <Setter Property="Padding" Value="16,12" />
+    <Setter Property="MinWidth" Value="140" />
+    <Setter Property="MinHeight" Value="200" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
 </ResourceDictionary>
 
 

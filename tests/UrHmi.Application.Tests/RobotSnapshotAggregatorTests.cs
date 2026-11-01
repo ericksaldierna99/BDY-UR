@@ -134,6 +134,25 @@ public sealed class RobotSnapshotAggregatorTests
         Assert.Equal("PLAYING", snapshot.ProgramStatus.Value);
     }
 
+    [Fact]
+    public void Actual_q_fills_live_joint_positions()
+    {
+        var aggregator = new RobotSnapshotAggregator();
+        var now = DateTimeOffset.UtcNow;
+        aggregator.SetRtdeKeys([DefaultRtdeOutputs.ActualQ]);
+        aggregator.SetRtdeHealth(Connected(ChannelIds.RobotRtde, now));
+        aggregator.ApplyRtdeFrame(Frame(now, new Dictionary<string, object?>
+        {
+            [DefaultRtdeOutputs.ActualQ] = new[] { 0.1, -0.2, 0.3, 0.4, 0.5, 0.6 }
+        }));
+
+        var snapshot = aggregator.Build(now, DashboardStale, RtdeStale);
+
+        Assert.Equal(Freshness.Live, snapshot.JointPositions.Freshness);
+        Assert.Equal(0.1, snapshot.JointPositions.Value?.J1);
+        Assert.Equal(0.6, snapshot.JointPositions.Value?.J6);
+    }
+
     private static ChannelHealth Connected(string channelId, DateTimeOffset now) =>
         new(channelId, LinkState.Connected, now, TimeSpan.Zero, null);
 

@@ -90,6 +90,9 @@ public sealed class RobotTelemetryServiceTests
         public Task<DashboardCommandResult> GetPolyscopeVersionAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(DashboardCommandResult.Failed("not connected"));
 
+        public Task<DashboardCommandResult> BrakeReleaseAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(DashboardCommandResult.Failed("not connected"));
+
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 

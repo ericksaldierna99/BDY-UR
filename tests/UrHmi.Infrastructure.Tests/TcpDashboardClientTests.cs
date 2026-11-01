@@ -23,6 +23,7 @@ public sealed class TcpDashboardClientTests
         var program = await client.GetProgramStateAsync();
         var running = await client.GetRunningAsync();
         var version = await client.GetPolyscopeVersionAsync();
+        var brakes = await client.BrakeReleaseAsync();
         await client.DisconnectAsync();
         listener.Stop();
         await server;
@@ -32,6 +33,7 @@ public sealed class TcpDashboardClientTests
         Assert.Equal("PLAYING", program.Value);
         Assert.Equal("Program running", running.Value);
         Assert.Equal("5.25.2", version.Value);
+        Assert.Equal("Brake releasing", brakes.Value);
     }
 
     private static async Task ServeAsync(TcpListener listener)
@@ -54,6 +56,7 @@ public sealed class TcpDashboardClientTests
                 "programState" => "PLAYING default.urp\n",
                 "running" => "Program running: true\n",
                 "PolyscopeVersion" => "URSoftware 5.25.2\n",
+                "brakeRelease" => "Brake releasing\n",
                 _ => "Error: Unknown command\n"
             };
             await stream.WriteAsync(Encoding.ASCII.GetBytes(reply));

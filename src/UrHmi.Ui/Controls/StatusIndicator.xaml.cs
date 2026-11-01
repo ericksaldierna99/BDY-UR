@@ -43,7 +43,7 @@ public partial class StatusIndicator : UserControl
         nameof(Command),
         typeof(ICommand),
         typeof(StatusIndicator),
-        new PropertyMetadata(null, OnVisualStateChanged));
+        new PropertyMetadata(null, OnCommandChanged));
 
     public StatusIndicator()
     {
@@ -96,6 +96,34 @@ public partial class StatusIndicator : UserControl
         }
     }
 
+    private static void OnCommandChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not StatusIndicator indicator)
+        {
+            return;
+        }
+
+        indicator.DetachCommand(e.OldValue as ICommand);
+
+        if (e.NewValue is ICommand newCommand)
+        {
+            newCommand.CanExecuteChanged += indicator.OnCommandCanExecuteChanged;
+        }
+
+        indicator.ApplyVisualState();
+    }
+
+    private void OnCommandCanExecuteChanged(object? sender, EventArgs e) => ApplyVisualState();
+
+    private void DetachCommand(ICommand? command = null)
+    {
+        command ??= Command;
+        if (command is not null)
+        {
+            command.CanExecuteChanged -= OnCommandCanExecuteChanged;
+        }
+    }
+
     private void ApplyVisualState()
     {
         if (TitleText is null || ValueTextBlock is null || FreshnessText is null || Chrome is null || KindMark is null)
@@ -106,7 +134,7 @@ public partial class StatusIndicator : UserControl
         TitleText.Text = Title;
         ValueTextBlock.Text = string.IsNullOrWhiteSpace(ValueText) ? "—" : ValueText;
         FreshnessText.Text = FreshnessCaption;
-        Cursor = Command is null ? Cursors.Arrow : Cursors.Hand;
+        Cursor = Command is not null && Command.CanExecute(null) ? Cursors.Hand : Cursors.Arrow;
 
         var kindBrush = KindBrush(Kind);
         KindMark.Fill = kindBrush;

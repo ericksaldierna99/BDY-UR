@@ -47,4 +47,21 @@ public sealed class HmiConfigurationValidatorTests
 
         Assert.Contains(errors, e => e.Contains("plc.transport", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Invalid_urscript_ports_are_rejected()
+    {
+        var config = HmiConfiguration.CreateDefault() with
+        {
+            Robot = HmiConfiguration.CreateDefault().Robot with
+            {
+                UrScript = new UrScriptChannelConfiguration(0, 70000)
+            }
+        };
+
+        var errors = _validator.Validate(config);
+
+        Assert.Contains(errors, e => e.Contains("robot.urscript.port", StringComparison.Ordinal));
+        Assert.Contains(errors, e => e.Contains("robot.urscript.fallbackPort", StringComparison.Ordinal));
+    }
 }

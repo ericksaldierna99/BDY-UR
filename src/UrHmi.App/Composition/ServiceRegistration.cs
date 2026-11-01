@@ -8,8 +8,10 @@ using UrHmi.Application.Configuration;
 using UrHmi.Application.Telemetry;
 using UrHmi.Domain.Configuration;
 using UrHmi.Domain.Ports;
+using UrHmi.Application.Jog;
 using UrHmi.Infrastructure.Alarms;
 using UrHmi.Infrastructure.Config;
+using UrHmi.Infrastructure.Jog;
 using UrHmi.Infrastructure.Plc;
 using UrHmi.Infrastructure.Robot;
 using UrHmi.Infrastructure.Secrets;
@@ -52,6 +54,7 @@ internal static class ServiceRegistration
             return loaded;
         });
 
+        services.AddSingleton<IUserPrompt, WpfUserPrompt>();
         services.AddSingleton<ISecretStore, UnconfiguredSecretStore>();
         services.AddSingleton<IAuthorizationService, MaintenanceRoleAuthorizationService>();
         services.AddSingleton<InMemoryAlarmStore>();
@@ -60,6 +63,15 @@ internal static class ServiceRegistration
 
         services.AddSingleton<IRobotDashboardClient, TcpDashboardClient>();
         services.AddSingleton<IRtdeClient, RtdeClient>();
+        services.AddSingleton<IUrScriptClient, UrScriptClient>();
+        services.AddSingleton<IJogPoseStore>(sp =>
+        {
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<JsonJogPoseStore>>();
+            var path = Path.Combine(AppContext.BaseDirectory, "jog-poses.json");
+            return new JsonJogPoseStore(path, logger);
+        });
+        services.AddSingleton<RobotJogService>();
+        services.AddSingleton<IRobotJogService>(sp => sp.GetRequiredService<RobotJogService>());
         services.AddSingleton<IPlcChannel, PlaceholderPlcChannel>();
 
         services.AddSingleton<RobotTelemetryService>();

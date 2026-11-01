@@ -9,6 +9,10 @@
       "port": 30004,
       "staleTimeoutMs": 200,
       "recipeId": "default"
+    },
+    "urscript": {
+      "port": 30002,
+      "fallbackPort": 30001
     }
   },
   "plc": {

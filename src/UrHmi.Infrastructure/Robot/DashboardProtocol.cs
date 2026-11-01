@@ -61,4 +61,16 @@ internal static class DashboardProtocol
 
         return named;
     }
+
+    public static DashboardCommandResult ParseCommandAck(string raw)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(raw);
+        var trimmed = raw.Trim();
+        if (IsError(trimmed))
+        {
+            return DashboardCommandResult.Failed(trimmed, trimmed);
+        }
+
+        return DashboardCommandResult.Ok(trimmed, trimmed);
+    }
 }

@@ -20,6 +20,7 @@ public sealed class RobotSnapshotTests
             TimedValue<string>.Unavailable(),
             TimedValue<string>.Unavailable(),
             TimedValue<TcpPose>.Unavailable(),
+            TimedValue<JointPose>.Unavailable(),
             TimedValue<double>.Unavailable(),
             lastValid);
 

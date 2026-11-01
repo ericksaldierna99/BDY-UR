@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:UrHmi.Ui.Controls">
   <UserControl.InputBindings>
-    <KeyBinding Key="Escape" Command="{Binding CloseActiveAlarmsCommand}" />
+    <KeyBinding Key="Escape" Command="{Binding CloseTopDialogCommand}" />
   </UserControl.InputBindings>
   <UserControl.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -203,6 +203,104 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+    <Grid Background="#CC1B1F24"
+          Visibility="{Binding IsRobotJogOpen, Converter={StaticResource BoolToVisibility}}">
+      <Border Style="{DynamicResource DialogCardStyle}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              MinWidth="560"
+              MaxWidth="720">
+        <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right"
+                    Style="{DynamicResource SettingButtonStyle}"
+                    Content="Close"
+                    Command="{Binding CloseRobotJogCommand}" />
+            <TextBlock Style="{DynamicResource ModuleTitleStyle}"
+                       Margin="0"
+                       VerticalAlignment="Center"
+                       Text="Robot JOG" />
+          </DockPanel>
+          <TextBlock DockPanel.Dock="Bottom"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Margin="0,12,0,0"
+                     Text="{Binding JogStatusText}" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ItemsControl ItemsSource="{Binding JogSlots}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Style="{DynamicResource JogPositionButtonStyle}"
+                          Command="{Binding DataContext.OpenSavePositionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          CommandParameter="{Binding Slot}">
+                    <StackPanel>
+                      <TextBlock FontSize="15" FontWeight="SemiBold" Text="{Binding Title}" />
+                      <TextBlock FontSize="11"
+                                 Foreground="{DynamicResource Brush.Muted}"
+                                 Text="{Binding Caption}" />
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Grid.Column="1"
+                    Style="{DynamicResource JogBrakeButtonStyle}"
+                    Content="Brake release"
+                    Command="{Binding ReleaseBrakesCommand}" />
+          </Grid>
+        </DockPanel>
+      </Border>
+    </Grid>
+    <Grid Background="#CC1B1F24"
+          Visibility="{Binding IsSavePositionOpen, Converter={StaticResource BoolToVisibility}}">
+      <Border Style="{DynamicResource DialogCardStyle}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              MinWidth="480"
+              MaxWidth="620">
+        <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right"
+                    Style="{DynamicResource SettingButtonStyle}"
+                    Content="Close"
+                    Command="{Binding CloseSavePositionCommand}" />
+            <TextBlock Style="{DynamicResource ModuleTitleStyle}"
+                       Margin="0"
+                       VerticalAlignment="Center"
+                       Text="{Binding SelectedJogTitle}" />
+          </DockPanel>
+          <TextBlock DockPanel.Dock="Top"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Margin="0,0,0,8"
+                     Text="Stored coordinates" />
+          <TextBlock DockPanel.Dock="Top"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Foreground="{DynamicResource Brush.Text}"
+                     FontFamily="Consolas"
+                     Text="{Binding StoredCoordinatesText}" />
+          <TextBlock DockPanel.Dock="Bottom"
+                     Style="{DynamicResource BodyTextStyle}"
+                     Margin="0,12,0,0"
+                     Text="{Binding JogStatusText}" />
+          <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+            <Button Style="{DynamicResource SettingButtonStyle}"
+                    Content="Save current TCP/joints"
+                    Command="{Binding SaveCurrentPositionCommand}" />
+            <Button Style="{DynamicResource SettingButtonStyle}"
+                    Content="Go to saved pose"
+                    Command="{Binding GoToSavedPositionCommand}" />
+          </StackPanel>
         </DockPanel>
       </Border>
     </Grid>

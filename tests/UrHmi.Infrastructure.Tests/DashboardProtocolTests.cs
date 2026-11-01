@@ -36,4 +36,16 @@ public sealed class DashboardProtocolTests
         Assert.Equal("Program running", running.Value);
         Assert.Equal("Program not running", idle.Value);
     }
+
+    [Fact]
+    public void Parses_brake_release_ack_without_inventing_success_on_error()
+    {
+        var ok = DashboardProtocol.ParseCommandAck("Brake releasing");
+        var error = DashboardProtocol.ParseCommandAck("Error: Protective stop");
+
+        Assert.True(ok.Success);
+        Assert.Equal("Brake releasing", ok.Value);
+        Assert.False(error.Success);
+        Assert.Contains("Protective stop", error.Error, StringComparison.Ordinal);
+    }
 }

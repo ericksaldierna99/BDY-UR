@@ -3,7 +3,7 @@ using UrHmi.Domain.Robot;
 namespace UrHmi.Domain.Ports;
 
 /// <summary>
-/// Dashboard Server channel (TCP 29999, ASCII). Queries only; no play/stop/move.
+/// Dashboard Server channel (TCP 29999, ASCII). Queries plus explicit commands the HMI requires.
 /// </summary>
 public interface IRobotDashboardClient : IAsyncDisposable
 {
@@ -22,4 +22,6 @@ public interface IRobotDashboardClient : IAsyncDisposable
     Task<DashboardCommandResult> GetRunningAsync(CancellationToken cancellationToken = default);
 
     Task<DashboardCommandResult> GetPolyscopeVersionAsync(CancellationToken cancellationToken = default);
+
+    Task<DashboardCommandResult> BrakeReleaseAsync(CancellationToken cancellationToken = default);
 }

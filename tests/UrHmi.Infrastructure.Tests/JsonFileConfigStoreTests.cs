@@ -25,6 +25,8 @@ public sealed class JsonFileConfigStoreTests
             Assert.Equal("192.168.1.10", loaded.Robot.Ip);
             Assert.Equal(29999, loaded.Robot.Dashboard.Port);
             Assert.Equal(30004, loaded.Robot.Rtde.Port);
+            Assert.Equal(30002, loaded.Robot.UrScript.Port);
+            Assert.Equal(30001, loaded.Robot.UrScript.FallbackPort);
             Assert.Equal("simulator", loaded.Plc.Transport);
             Assert.False(loaded.SafeMode);
 

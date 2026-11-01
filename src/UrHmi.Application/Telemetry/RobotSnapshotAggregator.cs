@@ -20,6 +20,7 @@ public sealed class RobotSnapshotAggregator
     private TimedValue<string> _safetyStatus = TimedValue<string>.Unavailable();
     private TimedValue<string> _activeFault = TimedValue<string>.Unavailable();
     private TimedValue<TcpPose> _tcpPosition = TimedValue<TcpPose>.Unavailable();
+    private TimedValue<JointPose> _jointPositions = TimedValue<JointPose>.Unavailable();
     private TimedValue<double> _tcpSpeed = TimedValue<double>.Unavailable();
     private FieldSource _robotModeSource;
     private FieldSource _robotStatusSource;
@@ -113,6 +114,15 @@ public sealed class RobotSnapshotAggregator
             }
         }
 
+        if (frame.Values.TryGetValue(DefaultRtdeOutputs.ActualQ, out var jointsRaw) && jointsRaw is double[] jointVector)
+        {
+            var joints = JointPose.FromVector6(jointVector);
+            if (joints is not null)
+            {
+                _jointPositions = TimedValue<JointPose>.Live(joints, now);
+            }
+        }
+
         if (frame.Values.TryGetValue(DefaultRtdeOutputs.ActualTcpSpeed, out var speedRaw) && speedRaw is double[] speedVector
             && speedVector.Length >= 3)
         {
@@ -136,6 +146,7 @@ public sealed class RobotSnapshotAggregator
         var programStatus = Age(_programStatus, _programStatusSource, now, dashboardStale, rtdeStale, dashboardLinkLive, rtdeLinkLive);
         var safetyStatus = Age(_safetyStatus, _safetyStatusSource, now, dashboardStale, rtdeStale, dashboardLinkLive, rtdeLinkLive);
         var tcpPosition = _tcpPosition.WithFreshness(now, rtdeStale, rtdeLinkLive);
+        var jointPositions = _jointPositions.WithFreshness(now, rtdeStale, rtdeLinkLive);
         var tcpSpeed = _tcpSpeed.WithFreshness(now, rtdeStale, rtdeLinkLive);
 
         var faultSourceLive = _safetyStatusSource == FieldSource.Rtde ? rtdeLinkLive : dashboardLinkLive;
@@ -153,6 +164,7 @@ public sealed class RobotSnapshotAggregator
             safetyStatus.LastValidUtc,
             activeFault.LastValidUtc,
             tcpPosition.LastValidUtc,
+            jointPositions.LastValidUtc,
             tcpSpeed.LastValidUtc);
 
         return new RobotSnapshot(
@@ -165,6 +177,7 @@ public sealed class RobotSnapshotAggregator
             safetyStatus,
             activeFault,
             tcpPosition,
+            jointPositions,
             tcpSpeed,
             lastValid);
     }

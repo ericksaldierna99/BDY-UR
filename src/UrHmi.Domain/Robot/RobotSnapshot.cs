@@ -10,6 +10,7 @@ public sealed record RobotSnapshot(
     TimedValue<string> SafetyStatus,
     TimedValue<string> ActiveFault,
     TimedValue<TcpPose> TcpPosition,
+    TimedValue<JointPose> JointPositions,
     TimedValue<double> TcpSpeed,
     DateTimeOffset? LastValidUpdateUtc)
 {
@@ -24,6 +25,7 @@ public sealed record RobotSnapshot(
             TimedValue<string>.Unavailable(),
             TimedValue<string>.Unavailable(),
             TimedValue<TcpPose>.Unavailable(),
+            TimedValue<JointPose>.Unavailable(),
             TimedValue<double>.Unavailable(),
             LastValidUpdateUtc: null);
 }
