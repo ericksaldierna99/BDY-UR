@@ -248,6 +248,7 @@ public sealed class RobotJogServiceTests
         var result = await sut.EnableFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
 
         Assert.True(result.Succeeded);
+        Assert.True(sut.IsFreedriveActive);
         var script = Assert.Single(urScript.Programs);
         Assert.Contains("freedrive_mode()", script, StringComparison.Ordinal);
         Assert.Contains("while True:", script, StringComparison.Ordinal);
@@ -280,10 +281,31 @@ public sealed class RobotJogServiceTests
         var result = await sut.EndFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
 
         Assert.True(result.Succeeded);
+        Assert.False(sut.IsFreedriveActive);
         Assert.Equal("Freedrive ended.", result.Message);
         Assert.Contains("end_freedrive_mode()", Assert.Single(urScript.Sent), StringComparison.Ordinal);
         Assert.Equal(1, urScript.CloseCalls);
         Assert.Single(urScript.Programs);
+    }
+
+    [Fact]
+    public async Task End_freedrive_closes_the_socket_immediately_without_waiting_for_the_send()
+    {
+        var sut = CreateSut(out var urScript, out _, out var dashboard);
+        dashboard.Remote = "true";
+        dashboard.Modes.Enqueue("RUNNING");
+        urScript.SendDelay = TimeSpan.FromSeconds(2);
+        await sut.EnableFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var result = await sut.EndFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+        started.Stop();
+
+        Assert.True(result.Succeeded);
+        Assert.False(sut.IsFreedriveActive);
+        Assert.Equal(1, urScript.CloseCalls);
+        Assert.Empty(urScript.Sent);
+        Assert.True(started.Elapsed < TimeSpan.FromMilliseconds(400), $"EndFreedrive blocked for {started.Elapsed}.");
     }
 
     [Fact]
@@ -294,6 +316,7 @@ public sealed class RobotJogServiceTests
         var result = await sut.EndFreedriveAsync(Snapshot(LinkState.Disconnected, LinkState.Disconnected));
 
         Assert.True(result.Succeeded);
+        Assert.False(sut.IsFreedriveActive);
         Assert.Empty(urScript.Sent);
         Assert.Equal(1, urScript.CloseCalls);
     }
@@ -404,10 +427,23 @@ public sealed class RobotJogServiceTests
 
         public int CloseCalls { get; private set; }
 
+        public TimeSpan SendDelay { get; set; }
+
         public Task SendAsync(string script, CancellationToken cancellationToken = default)
         {
+            if (SendDelay <= TimeSpan.Zero)
+            {
+                Sent.Add(script);
+                return Task.CompletedTask;
+            }
+
+            return SendDelayedAsync(script, cancellationToken);
+        }
+
+        private async Task SendDelayedAsync(string script, CancellationToken cancellationToken)
+        {
+            await Task.Delay(SendDelay, cancellationToken).ConfigureAwait(false);
             Sent.Add(script);
-            return Task.CompletedTask;
         }
 
         public Task SendProgramAsync(string script, CancellationToken cancellationToken = default)

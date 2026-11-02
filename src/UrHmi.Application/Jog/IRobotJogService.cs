@@ -17,11 +17,13 @@ public interface IRobotJogService
         Action<string>? progress = null,
         CancellationToken cancellationToken = default);
 
+    bool IsFreedriveActive { get; }
+
     Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Send <c>end_freedrive_mode()</c> when linked, then close the held URScript program socket.
-    /// Always closes the socket. Does not require permission.
+    /// Close the held program socket immediately, then send <c>end_freedrive_mode()</c> in the background when linked.
+    /// Does not require permission. Does not wait for the send.
     /// </summary>
     Task<JogResult> EndFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default);
 

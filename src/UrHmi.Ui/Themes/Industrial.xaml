@@ -234,6 +234,16 @@
     <Setter Property="HorizontalContentAlignment" Value="Center" />
   </Style>
 
+  <Style x:Key="JogFreedriveButtonStyle" TargetType="Button" BasedOn="{StaticResource JogBrakeButtonStyle}">
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding IsFreedriveActive}" Value="True">
+        <Setter Property="Background" Value="{StaticResource Brush.JogSaved}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Normal}" />
+        <Setter Property="BorderThickness" Value="2" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
   <Style x:Key="JogDeleteProgressStyle" TargetType="ProgressBar">
     <Setter Property="Height" Value="4" />
     <Setter Property="Minimum" Value="0" />

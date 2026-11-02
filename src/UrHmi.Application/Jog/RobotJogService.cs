@@ -15,6 +15,7 @@ public sealed class RobotJogService : IRobotJogService
     private readonly ILogger<RobotJogService> _logger;
     private readonly object _gate = new();
     private IReadOnlyList<SavedJogPose> _slots = SavedJogPose.EmptySlots();
+    private bool _freedriveActive;
 
     public RobotJogService(
         IJogPoseStore store,
@@ -37,6 +38,17 @@ public sealed class RobotJogService : IRobotJogService
             lock (_gate)
             {
                 return _slots;
+            }
+        }
+    }
+
+    public bool IsFreedriveActive
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _freedriveActive;
             }
         }
     }
@@ -239,6 +251,11 @@ public sealed class RobotJogService : IRobotJogService
         try
         {
             await _urScript.SendProgramAsync(UrScriptCommands.EnableFreedrive(), cancellationToken).ConfigureAwait(false);
+            lock (_gate)
+            {
+                _freedriveActive = true;
+            }
+
             return JogResult.Ok("Freedrive enabled.");
         }
         catch (Exception ex)
@@ -248,26 +265,39 @@ public sealed class RobotJogService : IRobotJogService
         }
     }
 
-    public async Task<JogResult> EndFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default)
+    public Task<JogResult> EndFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        StopFreedrive();
         if (IsLinked(snapshot))
         {
-            try
-            {
-                await _urScript.SendAsync(UrScriptCommands.DisableFreedrive(), cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "URScript end_freedrive_mode failed; closing the program socket.");
-            }
+            _ = SendEndFreedriveAsync(cancellationToken);
         }
 
-        StopFreedrive();
-        return JogResult.Ok("Freedrive ended.");
+        return Task.FromResult(JogResult.Ok("Freedrive ended."));
     }
 
-    public void StopFreedrive() => _urScript.CloseProgram();
+    public void StopFreedrive()
+    {
+        lock (_gate)
+        {
+            _freedriveActive = false;
+        }
+
+        _urScript.CloseProgram();
+    }
+
+    private async Task SendEndFreedriveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _urScript.SendAsync(UrScriptCommands.DisableFreedrive(), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "URScript end_freedrive_mode failed after closing the program socket.");
+        }
+    }
 
     public async Task<JogResult> DeleteAsync(int slot, CancellationToken cancellationToken = default)
     {

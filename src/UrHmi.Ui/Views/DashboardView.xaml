@@ -261,9 +261,9 @@
                            TextWrapping="Wrap"
                            TextAlignment="Center" />
               </Button>
-              <Button Style="{DynamicResource JogBrakeButtonStyle}"
+              <Button Style="{DynamicResource JogFreedriveButtonStyle}"
                       Command="{Binding EnableFreedriveCommand}">
-                <TextBlock Text="Enable freedrive"
+                <TextBlock Text="{Binding FreedriveButtonText}"
                            TextWrapping="Wrap"
                            TextAlignment="Center" />
               </Button>

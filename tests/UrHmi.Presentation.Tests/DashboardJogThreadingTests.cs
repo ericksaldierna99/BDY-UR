@@ -30,19 +30,44 @@ public sealed class DashboardJogThreadingTests
     }
 
     [Fact]
-    public async Task Close_jog_ends_freedrive_and_marshals_back_to_the_dispatcher()
+    public void Close_jog_ends_freedrive_without_waiting()
+    {
+        var dispatcher = new RecordingUiDispatcher();
+        var jog = new ThreadPoolJogService { EndDelay = TimeSpan.FromSeconds(2) };
+        using var sut = CreateViewModel(dispatcher, jog);
+        sut.OpenRobotJogCommand.Execute(null);
+        sut.IsFreedriveActive = true;
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        sut.CloseRobotJogCommand.Execute(null);
+        started.Stop();
+
+        Assert.False(sut.IsRobotJogOpen);
+        Assert.False(sut.IsFreedriveActive);
+        Assert.Equal(1, jog.EndFreedriveCalls);
+        Assert.True(started.Elapsed < TimeSpan.FromMilliseconds(400), $"Close blocked for {started.Elapsed}.");
+    }
+
+    [Fact]
+    public async Task Enable_freedrive_toggles_off_on_the_same_button()
     {
         var dispatcher = new RecordingUiDispatcher();
         var jog = new ThreadPoolJogService();
         using var sut = CreateViewModel(dispatcher, jog);
-        sut.OpenRobotJogCommand.Execute(null);
 
-        await sut.CloseRobotJogCommand.ExecuteAsync(null);
+        Assert.Equal("Enable freedrive", sut.FreedriveButtonText);
+        await sut.EnableFreedriveCommand.ExecuteAsync(null);
 
-        Assert.False(sut.IsRobotJogOpen);
-        Assert.Equal("Freedrive ended.", sut.JogStatusText);
+        Assert.True(sut.IsFreedriveActive);
+        Assert.True(jog.IsFreedriveActive);
+        Assert.Equal("Disable freedrive", sut.FreedriveButtonText);
+
+        await sut.EnableFreedriveCommand.ExecuteAsync(null);
+
+        Assert.False(sut.IsFreedriveActive);
+        Assert.False(jog.IsFreedriveActive);
+        Assert.Equal("Enable freedrive", sut.FreedriveButtonText);
         Assert.Equal(1, jog.EndFreedriveCalls);
-        Assert.True(dispatcher.InvokeAsyncCalls >= 2);
     }
 
     [Fact]
@@ -158,6 +183,10 @@ public sealed class DashboardJogThreadingTests
 
         public int EndFreedriveCalls { get; private set; }
 
+        public bool IsFreedriveActive { get; private set; }
+
+        public TimeSpan EndDelay { get; set; }
+
         public IReadOnlyList<SavedJogPose> Slots => _slots;
 
         public Task ReloadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -184,17 +213,28 @@ public sealed class DashboardJogThreadingTests
             return Task.Run(() => JogResult.Ok("Robot initialized."), cancellationToken);
         }
 
-        public Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default) =>
-            Task.Run(() => JogResult.Ok("Freedrive enabled."), cancellationToken);
+        public Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default)
+        {
+            IsFreedriveActive = true;
+            return Task.Run(() => JogResult.Ok("Freedrive enabled."), cancellationToken);
+        }
 
         public Task<JogResult> EndFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default)
         {
             EndFreedriveCalls++;
-            return Task.Run(() => JogResult.Ok("Freedrive ended."), cancellationToken);
+            IsFreedriveActive = false;
+            if (EndDelay > TimeSpan.Zero)
+            {
+                return Task.Delay(EndDelay, cancellationToken)
+                    .ContinueWith(_ => JogResult.Ok("Freedrive ended."), cancellationToken);
+            }
+
+            return Task.FromResult(JogResult.Ok("Freedrive ended."));
         }
 
         public void StopFreedrive()
         {
+            IsFreedriveActive = false;
         }
 
         public Task<JogResult> DeleteAsync(int slot, CancellationToken cancellationToken = default) =>

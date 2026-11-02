@@ -171,7 +171,13 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     private bool _isDeleteHolding;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FreedriveButtonText))]
+    private bool _isFreedriveActive;
+
+    [ObservableProperty]
     private double _deleteHoldProgress;
+
+    public string FreedriveButtonText => IsFreedriveActive ? "Disable freedrive" : "Enable freedrive";
 
     public TimeSpan DeleteHoldDuration { get; set; } = TimeSpan.FromSeconds(4);
 
@@ -218,16 +224,13 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private async Task CloseRobotJogAsync()
+    private void CloseRobotJog()
     {
         CancelDeleteHold();
-        await _dispatcher.InvokeAsync(() => IsSavePositionOpen = false).ConfigureAwait(false);
-        var result = await _jog.EndFreedriveAsync(_robot.Current).ConfigureAwait(false);
-        await _dispatcher.InvokeAsync(() =>
-        {
-            IsRobotJogOpen = false;
-            JogStatusText = result.Message;
-        }).ConfigureAwait(false);
+        IsSavePositionOpen = false;
+        IsFreedriveActive = false;
+        IsRobotJogOpen = false;
+        _ = _jog.EndFreedriveAsync(_robot.Current);
     }
 
     [RelayCommand(CanExecute = nameof(IsRobotConnected))]
@@ -265,7 +268,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 
         if (IsRobotJogOpen)
         {
-            IsRobotJogOpen = false;
+            CloseRobotJog();
             return;
         }
 
@@ -330,14 +333,28 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanRunJogAction))]
     private async Task EnableFreedriveAsync()
     {
-        if (!_prompt.Confirm(
-                "Enable freedrive",
-                "Enter freedrive_mode? The robot must be Remote and powered on with brakes released. It can then be moved by hand."))
+        if (IsFreedriveActive)
         {
-            return;
+            if (!_prompt.Confirm("Disable freedrive", "Exit freedrive_mode?"))
+            {
+                return;
+            }
+
+            await RunJogAsync(() => _jog.EndFreedriveAsync(_robot.Current)).ConfigureAwait(false);
+        }
+        else
+        {
+            if (!_prompt.Confirm(
+                    "Enable freedrive",
+                    "Enter freedrive_mode? The robot must be Remote and powered on with brakes released. It can then be moved by hand."))
+            {
+                return;
+            }
+
+            await RunJogAsync(() => _jog.EnableFreedriveAsync(_robot.Current)).ConfigureAwait(false);
         }
 
-        await RunJogAsync(() => _jog.EnableFreedriveAsync(_robot.Current)).ConfigureAwait(false);
+        await _dispatcher.InvokeAsync(() => IsFreedriveActive = _jog.IsFreedriveActive).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanBeginDeleteHold))]
@@ -454,6 +471,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         {
             CancelDeleteHold();
             _jog.StopFreedrive();
+            IsFreedriveActive = false;
             IsSavePositionOpen = false;
             IsRobotJogOpen = false;
             JogStatusText = "Robot is disconnected.";
