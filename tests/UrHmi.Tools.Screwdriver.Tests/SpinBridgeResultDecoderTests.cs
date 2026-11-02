@@ -69,6 +69,40 @@ public sealed class SpinBridgeResultDecoderTests
     }
 
     [Fact]
+    public void ResultContent_wrapper_maps_zero_nm_and_angle()
+    {
+        var latest = new
+        {
+            ResultContent = new JoiningResult(
+            [
+                new ResultValue("Final Torque", 0),
+                new ResultValue("Final Angle", 1.5)
+            ])
+        };
+
+        var pair = SpinBridgeResultDecoder.Decode(latestResult: latest);
+
+        Assert.Equal(0, pair.TorqueNm);
+        Assert.Equal(1.5, pair.AngleDeg);
+        Assert.Null(SpinBridgeResultDecoder.DescribeFailure(latest, pair));
+    }
+
+    [Fact]
+    public void Physical_quantity_names_map_torque_and_angle()
+    {
+        var overall = new object[]
+        {
+            new Dictionary<string, object?> { ["physicalQuantity"] = "Torque", ["measuredValue"] = 2.1 },
+            new Dictionary<string, object?> { ["physicalQuantity"] = "Angle", ["measuredValue"] = 12 }
+        };
+
+        var pair = SpinBridgeResultDecoder.Decode(overallResultValues: overall);
+
+        Assert.Equal(2.1, pair.TorqueNm);
+        Assert.Equal(12, pair.AngleDeg);
+    }
+
+    [Fact]
     public void Joining_result_overall_values_named_final_torque_and_angle()
     {
         var latest = new JoiningResult(

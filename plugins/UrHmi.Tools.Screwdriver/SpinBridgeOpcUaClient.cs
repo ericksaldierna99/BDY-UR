@@ -19,6 +19,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
     private readonly TimeSpan _staleTimeout;
     private readonly TimeSpan _pollInterval;
     private readonly object _lifecycle = new();
+    private readonly object _apply = new();
     private CancellationTokenSource? _runCts;
     private Task? _runLoop;
     private Task? _watchdogLoop;
@@ -26,8 +27,11 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
     private string? _resolveError;
     private string? _lastError;
     private string? _lastOpcError;
+    private string? _subscribeError;
     private int? _connectedPort;
     private bool _hadOpcSession;
+    private bool _subscribedEvents;
+    private bool _subscribedLatest;
     private int _started;
     private int _disposed;
 
@@ -125,6 +129,9 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
 
                     _latestResultId = null;
                     _resolveError = null;
+                    _subscribeError = null;
+                    _subscribedEvents = false;
+                    _subscribedLatest = false;
                     _connectedPort = null;
                     _aggregator.SetChannel(new ChannelHealth(
                         SpinBridgeReading.ChannelId,
@@ -138,6 +145,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                     if (_channel.IsConnected)
                     {
                         _hadOpcSession = true;
+                        await TrySubscribeResultReadyAsync(cancellationToken).ConfigureAwait(false);
                     }
                 }
 
@@ -373,6 +381,60 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         return "HTTP fallback: no JSON tightening results from the dashboard.";
     }
 
+    private async Task TrySubscribeResultReadyAsync(CancellationToken cancellationToken)
+    {
+        if (_subscribedEvents)
+        {
+            return;
+        }
+
+        string? last = null;
+        foreach (var source in SpinBridgeNodes.ResultManagementIds)
+        {
+            try
+            {
+                await _channel.SubscribeResultReadyAsync(source, OnResultReady, cancellationToken)
+                    .ConfigureAwait(false);
+                _subscribedEvents = true;
+                _subscribeError = null;
+                return;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException
+                || !cancellationToken.IsCancellationRequested)
+            {
+                last = $"{source}: {ex.Message}";
+            }
+        }
+
+        _subscribeError = last is null
+            ? "ResultReadyEventType subscribe on ResultManagement ns=1;i=5011 failed."
+            : $"ResultReadyEventType subscribe: {last}";
+    }
+
+    private async Task TrySubscribeLatestResultAsync(string latestResultId, CancellationToken cancellationToken)
+    {
+        if (_subscribedLatest)
+        {
+            return;
+        }
+
+        try
+        {
+            await _channel.SubscribeDataChangeAsync(latestResultId, OnLatestResultChanged, cancellationToken)
+                .ConfigureAwait(false);
+            _subscribedLatest = true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException
+            || !cancellationToken.IsCancellationRequested)
+        {
+            _subscribeError ??= $"LatestResult data-change: {ex.Message}";
+        }
+    }
+
+    private void OnResultReady(object? payload) => ApplyPayload(payload, fromEvent: true);
+
+    private void OnLatestResultChanged(object? payload) => ApplyPayload(payload, fromEvent: false);
+
     private async Task PollAsync(CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -382,20 +444,23 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         _latestResultId ??= await ResolveLatestResultAsync(ct).ConfigureAwait(false);
         if (_latestResultId is null)
         {
-            _lastError = _resolveError
-                ?? "LatestResult was not found under TighteningSystem/ResultManagement/Results.";
+            if (HasLiveValues())
+            {
+                return;
+            }
+
+            _lastError = CombineErrors(
+                _subscribeError,
+                _resolveError ?? "LatestResult was not found under TighteningSystem/ResultManagement/Results.");
             _lastOpcError = _lastError;
-            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, null, null, _lastError);
-            Publish();
+            ApplyEmpty(_lastError);
             return;
         }
 
+        await TrySubscribeLatestResultAsync(_latestResultId, ct).ConfigureAwait(false);
+
         var (pair, latest) = await ReadLatestAsync(_latestResultId, ct).ConfigureAwait(false);
-        var decodeError = SpinBridgeResultDecoder.DescribeFailure(latest, pair);
-        _lastError = decodeError;
-        _lastOpcError = decodeError;
-        _aggregator.ApplyPoll(DateTimeOffset.UtcNow, pair.TorqueNm, pair.AngleDeg, decodeError);
-        Publish();
+        ApplyMeasured(pair, latest);
     }
 
     private async Task<string?> ResolveLatestResultAsync(CancellationToken cancellationToken)
@@ -404,43 +469,23 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         [
             (
                 SpinBridgeNodes.TighteningSystemAbsolute,
-                [SpinBridgeNodes.ResultManagementName, SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
-                "TighteningSystem (nsu)"
+                SpinBridgeNodes.PathFromTighteningSystem,
+                "TighteningSystem nsu=" + SpinBridgeNodes.NamespaceUri + ";i=5003"
             ),
             (
                 SpinBridgeNodes.TighteningSystem,
-                [SpinBridgeNodes.ResultManagementName, SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
+                SpinBridgeNodes.PathFromTighteningSystem,
                 "TighteningSystem ns=1;i=5003"
             ),
             (
                 SpinBridgeNodes.ResultManagementAbsolute,
-                [SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
-                "ResultManagement (nsu)"
+                SpinBridgeNodes.PathFromResultManagement,
+                "ResultManagement nsu=" + SpinBridgeNodes.NamespaceUri + ";i=5011"
             ),
             (
                 SpinBridgeNodes.ResultManagement,
-                [SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
+                SpinBridgeNodes.PathFromResultManagement,
                 "ResultManagement ns=1;i=5011"
-            ),
-            (
-                SpinBridgeNodes.TighteningSystemIjt,
-                [SpinBridgeNodes.ResultManagementName, SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
-                "TighteningSystem IJT nsu"
-            ),
-            (
-                SpinBridgeNodes.ResultManagementIjt,
-                [SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
-                "ResultManagement IJT nsu"
-            ),
-            (
-                SpinBridgeNodes.ObjectsFolder,
-                [
-                    SpinBridgeNodes.TighteningSystemName,
-                    SpinBridgeNodes.ResultManagementName,
-                    SpinBridgeNodes.ResultsName,
-                    SpinBridgeNodes.LatestResultName
-                ],
-                "Objects i=85"
             )
         ];
 
@@ -462,20 +507,6 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
             {
                 lastMiss = $"{candidate.Label}: {ex.Message}";
             }
-        }
-
-        try
-        {
-            var bfs = await FindLatestResultByNameAsync(cancellationToken).ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(bfs))
-            {
-                _resolveError = null;
-                return bfs;
-            }
-        }
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            lastMiss = $"Objects browse: {ex.Message}";
         }
 
         _resolveError = lastMiss
@@ -556,6 +587,70 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         return (SpinBridgeResultDecoder.Decode(fields, overall, latest), latest);
     }
 
+    private void ApplyPayload(object? payload, bool fromEvent)
+    {
+        var pair = SpinBridgeResultDecoder.Decode(latestResult: payload);
+        if (pair.TorqueNm is not null || pair.AngleDeg is not null)
+        {
+            ApplyMeasured(pair, payload);
+            return;
+        }
+
+        if (fromEvent && HasLiveValues())
+        {
+            return;
+        }
+
+        var decodeError = SpinBridgeResultDecoder.DescribeFailure(payload, pair);
+        if (HasLiveValues())
+        {
+            return;
+        }
+
+        ApplyEmpty(decodeError);
+    }
+
+    private void ApplyMeasured(SpinBridgeMeasuredPair pair, object? payload)
+    {
+        var decodeError = SpinBridgeResultDecoder.DescribeFailure(payload, pair);
+        if (pair.TorqueNm is null && pair.AngleDeg is null)
+        {
+            if (HasLiveValues())
+            {
+                return;
+            }
+
+            ApplyEmpty(decodeError);
+            return;
+        }
+
+        lock (_apply)
+        {
+            _lastError = null;
+            _lastOpcError = null;
+            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, pair.TorqueNm, pair.AngleDeg, null);
+            _readings.Publish(_aggregator.Build(DateTimeOffset.UtcNow, _staleTimeout));
+        }
+    }
+
+    private void ApplyEmpty(string? error)
+    {
+        lock (_apply)
+        {
+            var current = _readings.Current;
+            if (current.TorqueNm.Freshness == Freshness.Live
+                || current.AngleDeg.Freshness == Freshness.Live)
+            {
+                return;
+            }
+
+            _lastError = error;
+            _lastOpcError = error;
+            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, null, null, error);
+            _readings.Publish(_aggregator.Build(DateTimeOffset.UtcNow, _staleTimeout));
+        }
+    }
+
     private async Task WatchdogAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
@@ -572,7 +667,13 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         }
     }
 
-    private void Publish() => _readings.Publish(_aggregator.Build(DateTimeOffset.UtcNow, _staleTimeout));
+    private void Publish()
+    {
+        lock (_apply)
+        {
+            _readings.Publish(_aggregator.Build(DateTimeOffset.UtcNow, _staleTimeout));
+        }
+    }
 
     private void StopLoops()
     {
@@ -619,59 +720,6 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         _aggregator.SetChannel(ChannelHealth.Disconnected(SpinBridgeReading.ChannelId));
         Publish();
     }
-
-    private async Task<string?> FindLatestResultByNameAsync(CancellationToken cancellationToken)
-    {
-        var queue = new Queue<(string Id, int Depth)>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        queue.Enqueue((SpinBridgeNodes.ObjectsFolder, 0));
-
-        while (queue.Count > 0 && seen.Count < 80 && !cancellationToken.IsCancellationRequested)
-        {
-            var (id, depth) = queue.Dequeue();
-            if (!seen.Add(id) || depth > 6)
-            {
-                continue;
-            }
-
-            IReadOnlyList<OpcBrowseNode> children;
-            try
-            {
-                children = await _channel.BrowseChildrenAsync(id, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested)
-            {
-                continue;
-            }
-
-            foreach (var child in children)
-            {
-                if (NamesMatch(child, SpinBridgeNodes.LatestResultName))
-                {
-                    return child.NodeId;
-                }
-
-                if (depth == 0 && IsSkippedRootName(child))
-                {
-                    continue;
-                }
-
-                queue.Enqueue((child.NodeId, depth + 1));
-            }
-        }
-
-        return null;
-    }
-
-    private static bool IsSkippedRootName(OpcBrowseNode node) =>
-        NamesEqual(node.BrowseName, "Server")
-        || NamesEqual(node.DisplayName, "Server")
-        || ContainsName(node, "Type")
-        || ContainsName(node, "View");
-
-    private static bool ContainsName(OpcBrowseNode node, string token) =>
-        (node.BrowseName?.Contains(token, StringComparison.OrdinalIgnoreCase) ?? false)
-        || (node.DisplayName?.Contains(token, StringComparison.OrdinalIgnoreCase) ?? false);
 
     private static bool NamesMatch(OpcBrowseNode node, string expected) =>
         NamesEqual(node.BrowseName, expected) || NamesEqual(node.DisplayName, expected);

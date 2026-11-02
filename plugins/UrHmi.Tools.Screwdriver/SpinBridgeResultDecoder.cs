@@ -130,6 +130,11 @@ public static class SpinBridgeResultDecoder
             return;
         }
 
+        if (TryBody(value, out var body))
+        {
+            Walk(body, ref torque, ref angle, visited, depth + 1);
+        }
+
         if (value is IDictionary dictionary)
         {
             string? dictName = null;
@@ -342,11 +347,35 @@ public static class SpinBridgeResultDecoder
     };
 
     private static bool IsNameProperty(string name) =>
-        name is "Name" or "name" or "BrowseName" or "DisplayName" or "Text";
+        name is "Name" or "name" or "BrowseName" or "DisplayName" or "Text"
+            or "PhysicalQuantity" or "physicalQuantity";
 
     private static bool IsValueProperty(string name) =>
         name is "Value" or "value" or "MeasuredValue" or "measuredValue" or "ResultValue" or "Body"
-            or "Measured";
+            or "Measured" or "ResultContent" or "resultContent";
+
+    private static bool TryBody(object value, out object? body)
+    {
+        body = null;
+        var property = value.GetType().GetProperty("Body", BindingFlags.Instance | BindingFlags.Public)
+            ?? value.GetType().GetProperty("ResultContent", BindingFlags.Instance | BindingFlags.Public)
+            ?? value.GetType().GetProperty("resultContent", BindingFlags.Instance | BindingFlags.Public);
+        if (property is null || property.GetIndexParameters().Length > 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            body = property.GetValue(value);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+
+        return body is not null && !ReferenceEquals(body, value);
+    }
 
     private static bool TryExtractMeasured(object? value, out double number)
     {

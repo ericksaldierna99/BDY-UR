@@ -4,6 +4,10 @@ internal sealed class FakeOpcUaChannel : IOpcUaChannel
 {
     public List<string> ConnectCalls { get; } = [];
 
+    public List<string> ResultReadySources { get; } = [];
+
+    public List<string> DataChangeSources { get; } = [];
+
     public Func<string, CancellationToken, Task>? ConnectHandler { get; set; }
 
     public Dictionary<string, List<OpcBrowseNode>> Tree { get; } = new(StringComparer.Ordinal);
@@ -13,6 +17,13 @@ internal sealed class FakeOpcUaChannel : IOpcUaChannel
     public bool IsConnected { get; set; }
 
     public bool DisconnectRequested { get; private set; }
+
+    public Func<string, Action<object?>, CancellationToken, Task>? SubscribeResultReadyHandler { get; set; }
+
+    public Func<string, Action<object?>, CancellationToken, Task>? SubscribeDataChangeHandler { get; set; }
+
+    private Action<object?>? _onResultReady;
+    private Action<object?>? _onDataChange;
 
     public Task ConnectAsync(string endpointUrl, CancellationToken cancellationToken)
     {
@@ -49,6 +60,40 @@ internal sealed class FakeOpcUaChannel : IOpcUaChannel
         Values.TryGetValue(nodeId, out var value);
         return Task.FromResult(value);
     }
+
+    public Task SubscribeResultReadyAsync(
+        string sourceNodeId,
+        Action<object?> onResult,
+        CancellationToken cancellationToken)
+    {
+        ResultReadySources.Add(sourceNodeId);
+        _onResultReady = onResult;
+        if (SubscribeResultReadyHandler is not null)
+        {
+            return SubscribeResultReadyHandler(sourceNodeId, onResult, cancellationToken);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task SubscribeDataChangeAsync(
+        string nodeId,
+        Action<object?> onValue,
+        CancellationToken cancellationToken)
+    {
+        DataChangeSources.Add(nodeId);
+        _onDataChange = onValue;
+        if (SubscribeDataChangeHandler is not null)
+        {
+            return SubscribeDataChangeHandler(nodeId, onValue, cancellationToken);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public void RaiseResultReady(object? payload) => _onResultReady?.Invoke(payload);
+
+    public void RaiseDataChange(object? payload) => _onDataChange?.Invoke(payload);
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 

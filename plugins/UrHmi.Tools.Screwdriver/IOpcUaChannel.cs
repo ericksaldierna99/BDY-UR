@@ -17,4 +17,23 @@ public interface IOpcUaChannel : IAsyncDisposable
     Task<IReadOnlyList<OpcBrowseNode>> BrowseChildrenAsync(string nodeId, CancellationToken cancellationToken);
 
     Task<object?> ReadValueAsync(string nodeId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Subscribe to ResultReadyEventType / JoiningSystemResultReadyEventType on
+    /// ResultManagement. <paramref name="onResult"/> receives the event Result
+    /// field (JoiningResultDataType, or ResultDataType with ResultContent).
+    /// </summary>
+    Task SubscribeResultReadyAsync(
+        string sourceNodeId,
+        Action<object?> onResult,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Data-change monitor for LatestResult (Spin's poll alternative in UAExpert
+    /// Data Access View).
+    /// </summary>
+    Task SubscribeDataChangeAsync(
+        string nodeId,
+        Action<object?> onValue,
+        CancellationToken cancellationToken);
 }

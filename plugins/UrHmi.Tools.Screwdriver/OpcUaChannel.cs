@@ -19,6 +19,10 @@ public sealed class OpcUaChannel : IOpcUaChannel
     private readonly ITelemetryContext _telemetry = DefaultTelemetry.Create(static _ => { });
     private ISession? _session;
     private ComplexTypeSystem? _complexTypes;
+    private Subscription? _subscription;
+    private Action<object?>? _onResultReady;
+    private Action<object?>? _onDataChange;
+    private readonly List<NodeId> _resultEventTypes = [];
     private int _disposed;
 
     public bool IsConnected => _session?.Connected == true;
@@ -157,7 +161,77 @@ public sealed class OpcUaChannel : IOpcUaChannel
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         var session = RequireSession();
         var value = await session.ReadValueAsync(ParseNodeId(nodeId), cancellationToken).ConfigureAwait(false);
-        return Unwrap(value);
+        return OpcValues.Unwrap(value);
+    }
+
+    public async Task SubscribeResultReadyAsync(
+        string sourceNodeId,
+        Action<object?> onResult,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceNodeId);
+        ArgumentNullException.ThrowIfNull(onResult);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var session = RequireSession();
+            _onResultReady = onResult;
+            var source = ParseNodeId(sourceNodeId);
+            _resultEventTypes.Clear();
+            _resultEventTypes.AddRange(await DiscoverResultEventTypesAsync(session, source, cancellationToken)
+                .ConfigureAwait(false));
+
+            var filter = BuildResultReadyFilter(session);
+            var item = new MonitoredItem(_telemetry, new MonitoredItemOptions
+            {
+                DisplayName = "ResultManagement ResultReady",
+                StartNodeId = source,
+                NodeClass = NodeClass.Object,
+                AttributeId = Attributes.EventNotifier,
+                MonitoringMode = MonitoringMode.Reporting,
+                SamplingInterval = 0,
+                QueueSize = 100,
+                DiscardOldest = true,
+                Filter = filter
+            });
+            item.Notification += OnResultReadyNotification;
+            await EnsureSubscriptionItemAsync(item, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task SubscribeDataChangeAsync(
+        string nodeId,
+        Action<object?> onValue,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
+        ArgumentNullException.ThrowIfNull(onValue);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _onDataChange = onValue;
+            var item = new MonitoredItem(_telemetry, new MonitoredItemOptions
+            {
+                DisplayName = "LatestResult",
+                StartNodeId = ParseNodeId(nodeId),
+                NodeClass = NodeClass.Variable,
+                AttributeId = Attributes.Value,
+                MonitoringMode = MonitoringMode.Reporting,
+                SamplingInterval = 200,
+                QueueSize = 10,
+                DiscardOldest = true
+            });
+            item.Notification += OnDataChangeNotification;
+            await EnsureSubscriptionItemAsync(item, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -201,8 +275,246 @@ public sealed class OpcUaChannel : IOpcUaChannel
         }
     }
 
+    private async Task EnsureSubscriptionItemAsync(MonitoredItem item, CancellationToken cancellationToken)
+    {
+        var session = RequireSession();
+        if (_subscription is null)
+        {
+            _subscription = new Subscription(_telemetry, new SubscriptionOptions
+            {
+                DisplayName = "Spin ResultReady",
+                PublishingInterval = 200,
+                KeepAliveCount = 10,
+                LifetimeCount = 50,
+                MaxNotificationsPerPublish = 100,
+                PublishingEnabled = true,
+                TimestampsToReturn = TimestampsToReturn.Both
+            });
+            session.AddSubscription(_subscription);
+            _subscription.AddItem(item);
+            await _subscription.CreateAsync(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        _subscription.AddItem(item);
+        await _subscription.ApplyChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private EventFilter BuildResultReadyFilter(ISession session)
+    {
+        var filter = new EventFilter();
+        filter.AddSelectClause(ObjectTypeIds.BaseEventType, new QualifiedName(BrowseNames.EventType));
+        filter.AddSelectClause(ObjectTypeIds.BaseEventType, new QualifiedName(BrowseNames.Time));
+
+        var resultNames = ResultBrowseNames(session);
+        var typeIds = _resultEventTypes.Count > 0
+            ? _resultEventTypes
+            : [ObjectTypeIds.BaseEventType];
+        foreach (var typeId in typeIds)
+        {
+            foreach (var name in resultNames)
+            {
+                filter.AddSelectClause(typeId, name);
+            }
+        }
+
+        return filter;
+    }
+
+    private async Task<List<NodeId>> DiscoverResultEventTypesAsync(
+        ISession session,
+        NodeId resultManagement,
+        CancellationToken cancellationToken)
+    {
+        var found = new List<NodeId>();
+        TryResolve(session, SpinBridgeNodes.ResultReadyEventTypeAbsolute, found);
+
+        try
+        {
+            var references = await session.FetchReferencesAsync(resultManagement, cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var reference in references)
+            {
+                if (!reference.IsForward)
+                {
+                    continue;
+                }
+
+                var name = reference.BrowseName.Name;
+                if (!IsResultReadyEventTypeName(name))
+                {
+                    continue;
+                }
+
+                var id = ExpandedNodeId.ToNodeId(reference.NodeId, session.NamespaceUris, false);
+                if (!id.IsNull)
+                {
+                    AddUnique(found, id);
+                }
+            }
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+        }
+
+        return found;
+    }
+
+    private static void TryResolve(ISession session, string text, List<NodeId> found)
+    {
+        try
+        {
+            AddUnique(found, OpcNodeIds.Resolve(text, session.NamespaceUris));
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private static void AddUnique(List<NodeId> found, NodeId id)
+    {
+        if (found.Any(existing => existing == id))
+        {
+            return;
+        }
+
+        found.Add(id);
+    }
+
+    private static bool IsResultReadyEventTypeName(string? name) =>
+        string.Equals(name, SpinBridgeNodes.ResultReadyEventTypeName, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(
+            name,
+            SpinBridgeNodes.JoiningSystemResultReadyEventTypeName,
+            StringComparison.OrdinalIgnoreCase);
+
+    private static QualifiedName[] ResultBrowseNames(ISession session)
+    {
+        var names = new List<QualifiedName> { new(SpinBridgeNodes.ResultFieldName) };
+        AddNamespacedName(names, session, SpinBridgeNodes.MachineryResultNamespaceUri, SpinBridgeNodes.ResultFieldName);
+        AddNamespacedName(names, session, SpinBridgeNodes.IjtBaseNamespaceUri, SpinBridgeNodes.ResultFieldName);
+        AddNamespacedName(names, session, SpinBridgeNodes.NamespaceUri, SpinBridgeNodes.ResultFieldName);
+        return [.. names];
+    }
+
+    private static void AddNamespacedName(
+        List<QualifiedName> names,
+        ISession session,
+        string namespaceUri,
+        string name)
+    {
+        var index = session.NamespaceUris.GetIndex(namespaceUri);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var qualified = new QualifiedName(name, (ushort)index);
+        if (names.Any(existing => existing == qualified))
+        {
+            return;
+        }
+
+        names.Add(qualified);
+    }
+
+    private void OnResultReadyNotification(MonitoredItem item, MonitoredItemNotificationEventArgs args)
+    {
+        try
+        {
+            var payload = ExtractResultField(item, args.NotificationValue);
+            _onResultReady?.Invoke(payload);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private void OnDataChangeNotification(MonitoredItem item, MonitoredItemNotificationEventArgs args)
+    {
+        try
+        {
+            _onDataChange?.Invoke(OpcValues.Unwrap(args.NotificationValue));
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private object? ExtractResultField(MonitoredItem item, IEncodeable? notification)
+    {
+        if (notification is not EventFieldList fields)
+        {
+            return OpcValues.Unwrap(notification);
+        }
+
+        foreach (var typeId in _resultEventTypes.Append(ObjectTypeIds.BaseEventType))
+        {
+            foreach (var name in ResultBrowseNames(RequireSession()))
+            {
+                var value = item.GetFieldValue(fields, typeId, name);
+                var unwrapped = OpcValues.Unwrap(value);
+                if (unwrapped is not null)
+                {
+                    return unwrapped;
+                }
+            }
+
+            var byString = OpcValues.Unwrap(
+                item.GetFieldValue(fields, typeId, SpinBridgeNodes.ResultFieldName, Attributes.Value));
+            if (byString is not null)
+            {
+                return byString;
+            }
+        }
+
+        if (fields.EventFields is { Count: > 0 })
+        {
+            var items = new object?[fields.EventFields.Count];
+            for (var i = 0; i < fields.EventFields.Count; i++)
+            {
+                items[i] = OpcValues.Unwrap(fields.EventFields[i]);
+            }
+
+            return items;
+        }
+
+        return null;
+    }
+
     private async Task CloseSessionAsync()
     {
+        _onResultReady = null;
+        _onDataChange = null;
+        _resultEventTypes.Clear();
+
+        var subscription = _subscription;
+        _subscription = null;
+        if (subscription is not null)
+        {
+            try
+            {
+                await subscription.DeleteAsync(true, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+            }
+
+            if (_session is not null)
+            {
+                try
+                {
+                    await _session.RemoveSubscriptionAsync(subscription, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            subscription.Dispose();
+        }
+
         var session = _session;
         _session = null;
         var types = _complexTypes;
@@ -232,35 +544,4 @@ public sealed class OpcUaChannel : IOpcUaChannel
 
     private string FormatNodeId(ExpandedNodeId id) =>
         OpcNodeIds.Format(id, RequireSession().NamespaceUris);
-
-#pragma warning disable CS0618
-    private static object? Unwrap(object? value)
-    {
-        switch (value)
-        {
-            case null:
-                return null;
-            case DataValue data:
-                return Unwrap(data.WrappedValue);
-            case Variant variant:
-                return variant.IsNull ? null : Unwrap(variant.AsBoxedObject(Variant.BoxingBehavior.Legacy));
-            case ExtensionObject extension:
-                return extension.IsNull ? null : Unwrap(extension.Body);
-            case LocalizedText text:
-                return text.Text;
-            case QualifiedName name:
-                return name.Name;
-            case Array array and not byte[] and not char[]:
-                var items = new object?[array.Length];
-                for (var i = 0; i < array.Length; i++)
-                {
-                    items[i] = Unwrap(array.GetValue(i));
-                }
-
-                return items;
-            default:
-                return value;
-        }
-    }
-#pragma warning restore CS0618
 }
