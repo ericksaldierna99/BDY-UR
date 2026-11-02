@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>UrHmi.Infrastructure</RootNamespace>
+    <AssemblyName>UrHmi.Infrastructure</AssemblyName>
+    <Description>Adapters for robot, PLC, configuration, secrets, and stores.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UrHmi.Domain\UrHmi.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="UrHmi.Infrastructure.Tests" />
+  </ItemGroup>
+</Project>

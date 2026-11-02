@@ -1,0 +1,70 @@
+<UserControl x:Class="UrHmi.Ui.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <TextBlock Style="{DynamicResource ModuleTitleStyle}" Text="{Binding Title}" />
+      <TextBlock Style="{DynamicResource BodyTextStyle}"
+                 Margin="0,0,0,12"
+                 Text="{Binding Notice}" />
+      <TextBlock Style="{DynamicResource BodyTextStyle}"
+                 Margin="0,0,0,16"
+                 Foreground="{DynamicResource Brush.Warning}"
+                 Text="{Binding SafeModeMessage}" />
+      <WrapPanel>
+        <Border Style="{DynamicResource DeviceCardStyle}">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource DeviceCardTitleStyle}" Text="Robot" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="IP" />
+            <TextBox Style="{DynamicResource SettingFieldStyle}" Text="{Binding RobotIp, Mode=OneWay}" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="Dashboard port" />
+            <TextBox Style="{DynamicResource SettingFieldStyle}" Text="{Binding DashboardPort, Mode=OneWay}" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="RTDE port" />
+            <TextBox Style="{DynamicResource SettingFieldStyle}" Text="{Binding RtdePort, Mode=OneWay}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource DeviceCardStyle}">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource DeviceCardTitleStyle}" Text="PLC" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="IP" />
+            <TextBox Style="{DynamicResource SettingFieldStyle}" Text="{Binding PlcIp, Mode=OneWay}" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="Transport" />
+            <TextBox Style="{DynamicResource SettingFieldStyle}" Text="{Binding PlcTransport, Mode=OneWay}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource DeviceCardStyle}">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource DeviceCardTitleStyle}" Text="Connection diagnostics" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="Dashboard link" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding DashboardLinkText}" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="Dashboard sample age" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding DashboardAgeText}" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="Dashboard last error" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding DashboardErrorText}" TextWrapping="Wrap" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="RTDE link" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding RtdeLinkText}" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="RTDE sample age" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding RtdeAgeText}" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="RTDE last error" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding RtdeErrorText}" TextWrapping="Wrap" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="PolyScope version" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding PolyscopeVersionText}" />
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="RTDE keys" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding RtdeKeysText}" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button Style="{DynamicResource SettingButtonStyle}"
+                      Content="Test connection"
+                      Command="{Binding TestConnectionCommand}" />
+              <Button Style="{DynamicResource SettingButtonStyle}"
+                      Content="Reconnect"
+                      Command="{Binding ReconnectCommand}" />
+            </StackPanel>
+            <TextBlock Style="{DynamicResource BodyTextStyle}"
+                       Margin="0,12,0,0"
+                       Text="{Binding ProbeSummary}" />
+          </StackPanel>
+        </Border>
+      </WrapPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
