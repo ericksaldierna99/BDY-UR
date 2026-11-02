@@ -201,6 +201,35 @@ public sealed class SpinBridgeOpcUaClientTests
     }
 
     [Fact]
+    public async Task ResultReady_structure_overall_result_values_map_zero_nm()
+    {
+        var channel = SpinTree(torque: null, angle: null);
+        using var client = new SpinBridgeOpcUaClient(TestConfig(), channel);
+        client.Start();
+
+        await WaitForAsync(client, value =>
+            value.Channel.Link == LinkState.Connected
+            && value.TorqueNm.Freshness == Freshness.Unavailable);
+
+        channel.RaiseResultReady(
+            FakeOpcStructure.Result(
+                FakeOpcStructure.Joining(
+                    FakeOpcStructure.ResultValue(
+                        "Final Torque (Nm)",
+                        0,
+                        target: 2.4,
+                        evaluation: "NOT_OK",
+                        physicalQuantity: 2),
+                    FakeOpcStructure.ResultValue("Final Angle (°)", 4, physicalQuantity: 3),
+                    FakeOpcStructure.ResultValue("Final Insertion Depth (mm)", 4.2, physicalQuantity: 6))));
+
+        var reading = await WaitForAsync(client, value => value.TorqueNm.Freshness == Freshness.Live);
+        Assert.Equal(0, reading.TorqueNm.Value);
+        Assert.Equal(4, reading.AngleDeg.Value);
+        Assert.Null(reading.Channel.LastError);
+    }
+
+    [Fact]
     public async Task ResultContent_wrapper_on_LatestResult_is_decoded()
     {
         const string latest = "ns=1;s=LatestResult";

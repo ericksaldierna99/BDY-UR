@@ -6,20 +6,21 @@ using System.Xml.Linq;
 
 namespace UrHmi.Tools.Screwdriver;
 
-public readonly record struct SpinBridgeMeasuredPair(double? TorqueNm, double? AngleDeg);
+public readonly record struct SpinBridgeMeasuredPair(double? TorqueNm, double? AngleDeg, double? DepthMm = null);
 
 public static class SpinBridgeResultDecoder
 {
     public const string FinalTorqueNm = "Final Torque (Nm)";
     public const string FinalAngleDeg = "Final Angle (°)";
+    public const string FinalInsertionDepthMm = "Final Insertion Depth (mm)";
 
     public static SpinBridgeMeasuredPair Decode(
         IReadOnlyDictionary<string, object?>? fields = null,
         object? overallResultValues = null,
         object? latestResult = null)
     {
-        var pair = Extract(overallResultValues);
-        pair = Merge(pair, Extract(latestResult));
+        var pair = Extract(OpcValues.Unwrap(overallResultValues));
+        pair = Merge(pair, Extract(OpcValues.Unwrap(latestResult)));
         if (fields is not null)
         {
             pair = Merge(pair, ExtractMap(fields));
@@ -40,146 +41,245 @@ public static class SpinBridgeResultDecoder
             byte[] bytes =>
                 $"LatestResult is {bytes.Length} undecoded bytes. JoiningResultDataType did not decode.",
             null => "LatestResult value is empty.",
-            _ => "LatestResult did not contain Final Torque/Angle."
+            _ => "Joining result did not contain overallResultValues Final Torque/Angle."
         };
     }
 
     private static SpinBridgeMeasuredPair Merge(SpinBridgeMeasuredPair left, SpinBridgeMeasuredPair right) =>
-        new(left.TorqueNm ?? right.TorqueNm, left.AngleDeg ?? right.AngleDeg);
+        new(
+            left.TorqueNm ?? right.TorqueNm,
+            left.AngleDeg ?? right.AngleDeg,
+            left.DepthMm ?? right.DepthMm);
 
     private static SpinBridgeMeasuredPair ExtractMap(IReadOnlyDictionary<string, object?> fields)
     {
+        if (TryFindOverall(fields, out var overall, 0))
+        {
+            var fromOverall = ExtractOverall(overall);
+            if (fromOverall.TorqueNm is not null || fromOverall.AngleDeg is not null)
+            {
+                return fromOverall;
+            }
+        }
+
         double? torque = null;
         double? angle = null;
+        double? depth = null;
         foreach (var (name, value) in fields)
         {
-            Assign(name, value, ref torque, ref angle);
+            Assign(name, value, ref torque, ref angle, ref depth);
         }
 
         if (torque is null && angle is null)
         {
-            return ExtractFromValues(fields.Values);
+            return Extract(fields);
         }
 
-        return new SpinBridgeMeasuredPair(torque, angle);
+        return new SpinBridgeMeasuredPair(torque, angle, depth);
     }
 
     private static SpinBridgeMeasuredPair Extract(object? value)
     {
-        double? torque = null;
-        double? angle = null;
-        Walk(value, ref torque, ref angle, [], 0);
-        return new SpinBridgeMeasuredPair(torque, angle);
-    }
-
-    private static SpinBridgeMeasuredPair ExtractFromValues(IEnumerable<object?> values)
-    {
-        double? torque = null;
-        double? angle = null;
-        foreach (var value in values)
+        if (TryFindOverall(value, out var overall, 0))
         {
-            Walk(value, ref torque, ref angle, [], 0);
-            if (torque is not null && angle is not null)
+            var fromOverall = ExtractOverall(overall);
+            if (fromOverall.TorqueNm is not null || fromOverall.AngleDeg is not null)
             {
-                break;
+                return fromOverall;
             }
         }
 
-        return new SpinBridgeMeasuredPair(torque, angle);
+        double? torque = null;
+        double? angle = null;
+        double? depth = null;
+        Walk(value, ref torque, ref angle, ref depth, [], 0);
+        return new SpinBridgeMeasuredPair(torque, angle, depth);
     }
 
-    private static void Walk(
-        object? value,
-        ref double? torque,
-        ref double? angle,
-        HashSet<object> visited,
-        int depth)
+    private static SpinBridgeMeasuredPair ExtractOverall(object? overall)
     {
-        if (value is null || depth > 8 || torque is not null && angle is not null)
+        double? torque = null;
+        double? angle = null;
+        double? depth = null;
+        foreach (var entry in Enumerate(overall))
         {
-            return;
+            if (!TryResultValue(entry, out var name, out var measured))
+            {
+                Walk(entry, ref torque, ref angle, ref depth, [], 0);
+                continue;
+            }
+
+            Assign(name, measured, ref torque, ref angle, ref depth);
         }
 
-        switch (value)
+        return new SpinBridgeMeasuredPair(torque, angle, depth);
+    }
+
+    private static bool TryFindOverall(object? value, out object? overall, int depth)
+    {
+        overall = null;
+        if (value is null || depth > 6)
         {
-            case byte[]:
-                return;
-            case string text:
-                Assign(text, null, ref torque, ref angle);
-                return;
-            case XmlNode node:
-                WalkXmlElement(XElement.Load(node.CreateNavigator()!.ReadSubtree()), ref torque, ref angle);
-                return;
-            case XElement element:
-                WalkXmlElement(element, ref torque, ref angle);
-                return;
-            case XDocument document when document.Root is { } root:
-                WalkXmlElement(root, ref torque, ref angle);
-                return;
+            return false;
         }
 
-        if (!IsScalar(value) && !visited.Add(value))
+        value = OpcValues.Unwrap(value);
+        if (value is null)
         {
-            return;
+            return false;
         }
 
-        if (TryNamedPair(value, out var name, out var namedValue))
+        if (TryGetNamedMember(value, "overallResultValues", out overall) && overall is not null)
         {
-            Assign(name, namedValue, ref torque, ref angle);
-            Walk(namedValue, ref torque, ref angle, visited, depth + 1);
-            return;
+            return true;
         }
 
-        if (TryBody(value, out var body))
+        if (TryGetNamedMember(value, "ResultContent", out var content) && content is not null)
         {
-            Walk(body, ref torque, ref angle, visited, depth + 1);
+            if (TryFindOverall(content, out overall, depth + 1))
+            {
+                return true;
+            }
+
+            foreach (var item in Enumerate(content))
+            {
+                if (TryFindOverall(item, out overall, depth + 1))
+                {
+                    return true;
+                }
+            }
         }
 
         if (value is IDictionary dictionary)
         {
-            string? dictName = null;
-            object? dictMeasured = null;
             foreach (DictionaryEntry entry in dictionary)
             {
-                var key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
-                if (key is not null && IsNameProperty(key))
+                if (TryFindOverall(entry.Value, out overall, depth + 1))
                 {
-                    dictName = ReadName(entry.Value);
+                    return true;
                 }
-                else if (key is not null && IsValueProperty(key))
-                {
-                    dictMeasured = entry.Value;
-                }
-
-                Assign(key, entry.Value, ref torque, ref angle);
-                Walk(entry.Value, ref torque, ref angle, visited, depth + 1);
             }
 
-            if (!string.IsNullOrWhiteSpace(dictName))
-            {
-                Assign(dictName, dictMeasured ?? dictionary, ref torque, ref angle);
-            }
-
-            return;
+            return false;
         }
 
-        if (value is IEnumerable enumerable and not string and not byte[])
+        if (value is IEnumerable enumerable
+            and not string
+            and not byte[]
+            and not XNode
+            and not XmlNode)
         {
             foreach (var item in enumerable)
             {
-                Walk(item, ref torque, ref angle, visited, depth + 1);
-                if (torque is not null && angle is not null)
+                if (TryFindOverall(item, out overall, depth + 1))
                 {
-                    return;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetNamedMember(object value, string name, out object? member)
+    {
+        member = null;
+        if (value is IDictionary dictionary)
+        {
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                var key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
+                if (key is not null && NamesEqual(key, name))
+                {
+                    member = OpcValues.Unwrap(entry.Value);
+                    return member is not null;
                 }
             }
 
-            return;
+            return false;
         }
 
-        if (IsScalar(value))
+        foreach (var property in value.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
-            return;
+            if (property.GetIndexParameters().Length > 0 || !NamesEqual(property.Name, name))
+            {
+                continue;
+            }
+
+            try
+            {
+                member = OpcValues.Unwrap(property.GetValue(value));
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+
+            return member is not null;
+        }
+
+        return false;
+    }
+
+    private static bool TryResultValue(object? entry, out string? name, out object? measured)
+    {
+        name = null;
+        measured = null;
+        if (entry is null)
+        {
+            return false;
+        }
+
+        entry = OpcValues.Unwrap(entry);
+        if (entry is null || entry is XNode or XmlNode)
+        {
+            return false;
+        }
+
+        string? foundName = null;
+        string? quantityName = null;
+        object? foundMeasured = null;
+        foreach (var (key, value) in Members(entry))
+        {
+            if (IsNameProperty(key))
+            {
+                foundName = ReadName(value);
+            }
+            else if (IsPhysicalQuantityProperty(key))
+            {
+                quantityName = NameFromPhysicalQuantity(value);
+            }
+            else if (IsMeasuredProperty(key))
+            {
+                foundMeasured = value;
+            }
+        }
+
+        foundName = string.IsNullOrWhiteSpace(foundName) ? quantityName : foundName;
+        if (string.IsNullOrWhiteSpace(foundName))
+        {
+            return false;
+        }
+
+        name = foundName;
+        measured = foundMeasured ?? entry;
+        return true;
+    }
+
+    private static IEnumerable<(string Name, object? Value)> Members(object value)
+    {
+        if (value is IDictionary dictionary)
+        {
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                var key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
+                if (key is not null)
+                {
+                    yield return (key, OpcValues.Unwrap(entry.Value));
+                }
+            }
+
+            yield break;
         }
 
         foreach (var property in value.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
@@ -199,26 +299,146 @@ public static class SpinBridgeResultDecoder
                 continue;
             }
 
-            Assign(property.Name, propertyValue, ref torque, ref angle);
-            Walk(propertyValue, ref torque, ref angle, visited, depth + 1);
+            yield return (property.Name, OpcValues.Unwrap(propertyValue));
         }
     }
 
-    private static void WalkXmlElement(XElement root, ref double? torque, ref double? angle)
+    private static IEnumerable<object?> Enumerate(object? value)
+    {
+        value = OpcValues.Unwrap(value);
+        switch (value)
+        {
+            case null:
+                yield break;
+            case string or byte[] or XNode or XmlNode:
+                yield return value;
+                yield break;
+            case IEnumerable enumerable and not IDictionary:
+                foreach (var item in enumerable)
+                {
+                    yield return item;
+                }
+
+                yield break;
+            default:
+                yield return value;
+                yield break;
+        }
+    }
+
+    private static void Walk(
+        object? value,
+        ref double? torque,
+        ref double? angle,
+        ref double? depth,
+        HashSet<object> visited,
+        int depthLevel)
+    {
+        if (value is null || depthLevel > 8 || torque is not null && angle is not null && depth is not null)
+        {
+            return;
+        }
+
+        value = OpcValues.Unwrap(value);
+        if (value is null)
+        {
+            return;
+        }
+
+        switch (value)
+        {
+            case byte[]:
+                return;
+            case string text:
+                Assign(text, null, ref torque, ref angle, ref depth);
+                return;
+            case XmlNode node:
+                WalkXmlElement(XElement.Load(node.CreateNavigator()!.ReadSubtree()), ref torque, ref angle, ref depth);
+                return;
+            case XElement element:
+                WalkXmlElement(element, ref torque, ref angle, ref depth);
+                return;
+            case XDocument document when document.Root is { } root:
+                WalkXmlElement(root, ref torque, ref angle, ref depth);
+                return;
+        }
+
+        if (!IsScalar(value) && !visited.Add(value))
+        {
+            return;
+        }
+
+        if (TryResultValue(value, out var resultName, out var measured))
+        {
+            Assign(resultName, measured, ref torque, ref angle, ref depth);
+            Walk(measured, ref torque, ref angle, ref depth, visited, depthLevel + 1);
+            return;
+        }
+
+        if (TryGetNamedMember(value, "ResultContent", out var body) && body is not null)
+        {
+            Walk(body, ref torque, ref angle, ref depth, visited, depthLevel + 1);
+        }
+
+        if (value is IDictionary dictionary)
+        {
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                var key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
+                Assign(key, entry.Value, ref torque, ref angle, ref depth);
+                Walk(entry.Value, ref torque, ref angle, ref depth, visited, depthLevel + 1);
+            }
+
+            return;
+        }
+
+        if (value is IEnumerable enumerable and not string and not byte[])
+        {
+            foreach (var item in enumerable)
+            {
+                Walk(item, ref torque, ref angle, ref depth, visited, depthLevel + 1);
+                if (torque is not null && angle is not null && depth is not null)
+                {
+                    return;
+                }
+            }
+
+            return;
+        }
+
+        if (IsScalar(value))
+        {
+            return;
+        }
+
+        foreach (var (propertyName, propertyValue) in Members(value))
+        {
+            Assign(propertyName, propertyValue, ref torque, ref angle, ref depth);
+            Walk(propertyValue, ref torque, ref angle, ref depth, visited, depthLevel + 1);
+        }
+    }
+
+    private static void WalkXmlElement(XElement root, ref double? torque, ref double? angle, ref double? depth)
     {
         foreach (var element in root.DescendantsAndSelf())
         {
             var local = element.Name.LocalName;
-            Assign(local, element.Value, ref torque, ref angle);
+            Assign(local, element.Value, ref torque, ref angle, ref depth);
             var name = element.Attribute("Name")?.Value
                 ?? element.Attribute("name")?.Value
                 ?? element.Element(element.Name.Namespace + "Name")?.Value
                 ?? element.Element(element.Name.Namespace + "name")?.Value
                 ?? FindChild(element, "Name", "BrowseName", "DisplayName");
-            var measured = FindChild(element, "MeasuredValue", "measuredValue", "Value", "value", "ResultValue");
+            var measured = FindChild(
+                element,
+                "MeasuredValue",
+                "measuredValue",
+                "Value",
+                "value",
+                "ResultValue");
             if (!string.IsNullOrWhiteSpace(name))
             {
-                Assign(name, measured ?? element.Value, ref torque, ref angle);
+                Assign(name, measured ?? element.Value, ref torque, ref angle, ref depth);
             }
         }
     }
@@ -236,50 +456,12 @@ public static class SpinBridgeResultDecoder
         return null;
     }
 
-    private static bool TryNamedPair(object value, out string? name, out object? namedValue)
-    {
-        name = null;
-        namedValue = null;
-        string? foundName = null;
-        object? foundValue = null;
-        foreach (var property in value.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
-        {
-            if (property.GetIndexParameters().Length > 0)
-            {
-                continue;
-            }
-
-            object? propertyValue;
-            try
-            {
-                propertyValue = property.GetValue(value);
-            }
-            catch (Exception)
-            {
-                continue;
-            }
-
-            if (IsNameProperty(property.Name))
-            {
-                foundName = ReadName(propertyValue);
-            }
-            else if (IsValueProperty(property.Name))
-            {
-                foundValue = propertyValue;
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(foundName) || foundValue is null)
-        {
-            return false;
-        }
-
-        name = foundName;
-        namedValue = foundValue;
-        return true;
-    }
-
-    private static void Assign(string? name, object? value, ref double? torque, ref double? angle)
+    private static void Assign(
+        string? name,
+        object? value,
+        ref double? torque,
+        ref double? angle,
+        ref double? depth)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -298,6 +480,10 @@ public static class SpinBridgeResultDecoder
         else if (angle is null && IsAngleName(name))
         {
             angle = number;
+        }
+        else if (depth is null && IsDepthName(name))
+        {
+            depth = number;
         }
     }
 
@@ -323,16 +509,29 @@ public static class SpinBridgeResultDecoder
                 && (normalized.Contains("deg", StringComparison.Ordinal) || normalized.Contains('°')));
     }
 
+    internal static bool IsDepthName(string name)
+    {
+        var normalized = Normalize(name);
+        return normalized.Contains("insertion depth", StringComparison.Ordinal)
+            || normalized is "final insertion depth (mm)" or "finalinsertiondepth";
+    }
+
     internal static bool IsOverallName(string name) =>
         Normalize(name).Replace(" ", "", StringComparison.Ordinal)
             .Contains("overallresultvalues", StringComparison.Ordinal);
+
+    private static bool NamesEqual(string actual, string expected) =>
+        string.Equals(
+            Normalize(actual).Replace(" ", "", StringComparison.Ordinal),
+            Normalize(expected).Replace(" ", "", StringComparison.Ordinal),
+            StringComparison.OrdinalIgnoreCase);
 
     private static string Normalize(string name)
     {
         var text = ReadName(name) ?? name;
         return string.Join(
             " ",
-            text.Replace('_', ' ').Replace('-', ' ').Replace('°', '°').Trim().ToLowerInvariant()
+            text.Replace('_', ' ').Replace('-', ' ').Trim().ToLowerInvariant()
                 .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
@@ -347,35 +546,51 @@ public static class SpinBridgeResultDecoder
     };
 
     private static bool IsNameProperty(string name) =>
-        name is "Name" or "name" or "BrowseName" or "DisplayName" or "Text"
-            or "PhysicalQuantity" or "physicalQuantity";
+        name is "Name" or "name" or "BrowseName" or "DisplayName" or "Text";
+
+    private static bool IsPhysicalQuantityProperty(string name) =>
+        name is "PhysicalQuantity" or "physicalQuantity";
+
+    private static string? NameFromPhysicalQuantity(object? value)
+    {
+        if (TryToDouble(value, out var number))
+        {
+            return (int)number switch
+            {
+                2 => FinalTorqueNm,
+                3 => FinalAngleDeg,
+                6 => FinalInsertionDepthMm,
+                _ => null
+            };
+        }
+
+        var text = ReadName(value);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        if (IsTorqueName(text))
+        {
+            return FinalTorqueNm;
+        }
+
+        if (IsAngleName(text))
+        {
+            return FinalAngleDeg;
+        }
+
+        return IsDepthName(text) || Normalize(text) is "distance" or "length" or "depth"
+            ? FinalInsertionDepthMm
+            : null;
+    }
+
+    private static bool IsMeasuredProperty(string name) =>
+        name is "MeasuredValue" or "measuredValue" or "Measured" or "measured";
 
     private static bool IsValueProperty(string name) =>
-        name is "Value" or "value" or "MeasuredValue" or "measuredValue" or "ResultValue" or "Body"
-            or "Measured" or "ResultContent" or "resultContent";
-
-    private static bool TryBody(object value, out object? body)
-    {
-        body = null;
-        var property = value.GetType().GetProperty("Body", BindingFlags.Instance | BindingFlags.Public)
-            ?? value.GetType().GetProperty("ResultContent", BindingFlags.Instance | BindingFlags.Public)
-            ?? value.GetType().GetProperty("resultContent", BindingFlags.Instance | BindingFlags.Public);
-        if (property is null || property.GetIndexParameters().Length > 0)
-        {
-            return false;
-        }
-
-        try
-        {
-            body = property.GetValue(value);
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-
-        return body is not null && !ReferenceEquals(body, value);
-    }
+        IsMeasuredProperty(name)
+        || name is "Value" or "value" or "ResultValue" or "Body";
 
     private static bool TryExtractMeasured(object? value, out double number)
     {
@@ -385,38 +600,9 @@ public static class SpinBridgeResultDecoder
             return false;
         }
 
-        if (value is IDictionary dictionary)
+        foreach (var (key, inner) in Members(value))
         {
-            foreach (DictionaryEntry entry in dictionary)
-            {
-                var key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
-                if (key is not null && IsValueProperty(key) && TryToDouble(entry.Value, out number))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        foreach (var property in value.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
-        {
-            if (property.GetIndexParameters().Length > 0 || !IsValueProperty(property.Name))
-            {
-                continue;
-            }
-
-            object? propertyValue;
-            try
-            {
-                propertyValue = property.GetValue(value);
-            }
-            catch (Exception)
-            {
-                continue;
-            }
-
-            if (TryToDouble(propertyValue, out number))
+            if (IsValueProperty(key) && TryToDouble(inner, out number))
             {
                 return true;
             }
@@ -425,11 +611,21 @@ public static class SpinBridgeResultDecoder
         return false;
     }
 
-    private static bool IsScalar(object value) =>
-        value is string || value.GetType().IsPrimitive || value is IFormattable and not IEnumerable;
+    private static bool IsScalar(object value)
+    {
+        if (value is string or byte[] or char[])
+        {
+            return true;
+        }
+
+        var type = value.GetType();
+        return type.IsPrimitive || type.IsEnum
+            || value is decimal or DateTime or DateTimeOffset or Guid or TimeSpan;
+    }
 
     internal static bool TryToDouble(object? value, out double number)
     {
+        value = OpcValues.Unwrap(value);
         switch (value)
         {
             case null:
