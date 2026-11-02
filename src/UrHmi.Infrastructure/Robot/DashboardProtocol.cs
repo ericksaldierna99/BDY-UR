@@ -5,10 +5,16 @@ namespace UrHmi.Infrastructure.Robot;
 internal static class DashboardProtocol
 {
     /// <summary>PolyScope 5.x Dashboard Server command. Space-separated; not camelCase.</summary>
+    public const string PowerOnCommand = "power on";
+
+    /// <summary>PolyScope 5.x Dashboard Server command. Space-separated; not camelCase.</summary>
     public const string BrakeReleaseCommand = "brake release";
 
     /// <summary>PolyScope 5.x Dashboard Server command. Space-separated; not camelCase.</summary>
     public const string UnlockProtectiveStopCommand = "unlock protective stop";
+
+    /// <summary>PolyScope 5.6+ Dashboard Server command. Space-separated; not camelCase.</summary>
+    public const string IsInRemoteControlCommand = "is in remote control";
 
     public static bool IsWelcome(string line) =>
         line.StartsWith("Connected", StringComparison.OrdinalIgnoreCase);

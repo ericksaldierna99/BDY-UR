@@ -21,7 +21,18 @@ public static class UrScriptCommands
             $"movel(p{FormatList(pose.ToVector())}, a={acceleration:0.###}, v={speed:0.###})\n");
     }
 
-    public static string EnableFreedrive() => "freedrive_mode()\n";
+    /// <summary>
+    /// Complete program so <c>freedrive_mode</c> stays active. A one-line call ends with the script and exits freedrive.
+    /// The function must be invoked; a <c>def</c> without a call never enters freedrive.
+    /// </summary>
+    public static string EnableFreedrive() =>
+        "def start_freedrive():\n" +
+        "  freedrive_mode()\n" +
+        "  while True:\n" +
+        "    sync()\n" +
+        "  end\n" +
+        "end\n" +
+        "start_freedrive()\n";
 
     public static string FormatStored(SavedJogPose pose)
     {

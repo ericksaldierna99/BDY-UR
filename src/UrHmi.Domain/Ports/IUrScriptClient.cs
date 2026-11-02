@@ -6,4 +6,10 @@ namespace UrHmi.Domain.Ports;
 public interface IUrScriptClient
 {
     Task SendAsync(string script, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Complete program (primary interface preferred). Use for scripts that must keep running, e.g. freedrive.
+    /// </summary>
+    Task SendProgramAsync(string script, CancellationToken cancellationToken = default) =>
+        SendAsync(script, cancellationToken);
 }

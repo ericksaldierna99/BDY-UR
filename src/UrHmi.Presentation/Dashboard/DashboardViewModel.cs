@@ -131,7 +131,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [NotifyCanExecuteChangedFor(nameof(OpenSavePositionCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveCurrentPositionCommand))]
     [NotifyCanExecuteChangedFor(nameof(GoToSavedPositionCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ReleaseBrakesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InitializeRobotCommand))]
     [NotifyCanExecuteChangedFor(nameof(EnableFreedriveCommand))]
     [NotifyCanExecuteChangedFor(nameof(BeginDeleteHoldCommand))]
     private bool _isRobotConnected;
@@ -157,7 +157,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCurrentPositionCommand))]
     [NotifyCanExecuteChangedFor(nameof(GoToSavedPositionCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ReleaseBrakesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InitializeRobotCommand))]
     [NotifyCanExecuteChangedFor(nameof(EnableFreedriveCommand))]
     [NotifyCanExecuteChangedFor(nameof(BeginDeleteHoldCommand))]
     private bool _isJogBusy;
@@ -307,20 +307,26 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand(CanExecute = nameof(CanRunJogAction))]
-    private async Task ReleaseBrakesAsync()
+    private async Task InitializeRobotAsync()
     {
-        if (!_prompt.Confirm("Brake release", "Release the robot brakes?"))
+        if (!_prompt.Confirm(
+                "Initialize robot",
+                "Power on, wait until booting completes, release the brakes, and wait until the robot is active in normal mode?"))
         {
             return;
         }
 
-        await RunJogAsync(() => _jog.ReleaseBrakesAsync(_robot.Current)).ConfigureAwait(false);
+        await RunJogAsync(() => _jog.InitializeAsync(
+            _robot.Current,
+            status => _dispatcher.Post(() => JogStatusText = status))).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanRunJogAction))]
     private async Task EnableFreedriveAsync()
     {
-        if (!_prompt.Confirm("Enable freedrive", "Enable freedrive? The robot can then be moved by hand."))
+        if (!_prompt.Confirm(
+                "Enable freedrive",
+                "Enter freedrive_mode? The robot must be Remote and powered on with brakes released. It can then be moved by hand."))
         {
             return;
         }

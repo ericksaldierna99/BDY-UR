@@ -23,6 +23,15 @@ public interface IRobotDashboardClient : IAsyncDisposable
 
     Task<DashboardCommandResult> GetPolyscopeVersionAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>PolyScope 5.x Dashboard <c>power on</c> (space-separated).</summary>
+    Task<DashboardCommandResult> PowerOnAsync(CancellationToken cancellationToken = default);
+
     /// <summary>PolyScope 5.x Dashboard <c>brake release</c> (space-separated).</summary>
     Task<DashboardCommandResult> BrakeReleaseAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>PolyScope 5.x Dashboard <c>unlock protective stop</c> (space-separated).</summary>
+    Task<DashboardCommandResult> UnlockProtectiveStopAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>PolyScope 5.6+ Dashboard <c>is in remote control</c>.</summary>
+    Task<DashboardCommandResult> IsInRemoteControlAsync(CancellationToken cancellationToken = default);
 }

@@ -14,19 +14,19 @@ namespace UrHmi.Presentation.Tests;
 public sealed class DashboardJogThreadingTests
 {
     [Fact]
-    public async Task Brake_release_marshals_busy_and_status_back_to_the_dispatcher()
+    public async Task Initialize_robot_marshals_busy_and_status_back_to_the_dispatcher()
     {
         var dispatcher = new RecordingUiDispatcher();
         var jog = new ThreadPoolJogService();
         using var sut = CreateViewModel(dispatcher, jog);
 
         Assert.True(sut.IsRobotConnected);
-        await sut.ReleaseBrakesCommand.ExecuteAsync(null);
+        await sut.InitializeRobotCommand.ExecuteAsync(null);
 
         Assert.False(sut.IsJogBusy);
-        Assert.Equal("Brake releasing.", sut.JogStatusText);
+        Assert.Equal("Robot initialized.", sut.JogStatusText);
         Assert.True(dispatcher.InvokeAsyncCalls >= 3);
-        Assert.Equal(1, jog.BrakeCalls);
+        Assert.Equal(1, jog.InitCalls);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class DashboardJogThreadingTests
     {
         private IReadOnlyList<SavedJogPose> _slots = SavedJogPose.EmptySlots();
 
-        public int BrakeCalls { get; private set; }
+        public int InitCalls { get; private set; }
 
         public IReadOnlyList<SavedJogPose> Slots => _slots;
 
@@ -156,10 +156,14 @@ public sealed class DashboardJogThreadingTests
         public Task<JogResult> GoToAsync(int slot, RobotSnapshot snapshot, CancellationToken cancellationToken = default) =>
             Task.Run(() => JogResult.Ok($"Move command sent to Position {slot}."), cancellationToken);
 
-        public Task<JogResult> ReleaseBrakesAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default)
+        public Task<JogResult> InitializeAsync(
+            RobotSnapshot snapshot,
+            Action<string>? progress = null,
+            CancellationToken cancellationToken = default)
         {
-            BrakeCalls++;
-            return Task.Run(() => JogResult.Ok("Brake releasing."), cancellationToken);
+            InitCalls++;
+            progress?.Invoke("Power on…");
+            return Task.Run(() => JogResult.Ok("Robot initialized."), cancellationToken);
         }
 
         public Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default) =>

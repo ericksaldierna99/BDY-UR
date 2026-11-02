@@ -26,9 +26,16 @@ public sealed class UrScriptCommandsTests
     }
 
     [Fact]
-    public void EnableFreedrive_is_urscript_freedrive_mode()
+    public void EnableFreedrive_is_a_looping_program_so_mode_stays_active()
     {
-        Assert.Equal("freedrive_mode()\n", UrScriptCommands.EnableFreedrive());
+        var script = UrScriptCommands.EnableFreedrive();
+
+        Assert.Contains("def start_freedrive():", script, StringComparison.Ordinal);
+        Assert.Contains("freedrive_mode()", script, StringComparison.Ordinal);
+        Assert.Contains("while True:", script, StringComparison.Ordinal);
+        Assert.Contains("sync()", script, StringComparison.Ordinal);
+        Assert.Contains("end\nstart_freedrive()\n", script, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"^freedrive_mode\(\)\n$", script);
     }
 
     [Fact]

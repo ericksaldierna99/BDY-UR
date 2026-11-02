@@ -58,6 +58,34 @@ public sealed class UrScriptClientTests
         Assert.Equal("brake_release()\n", payload);
     }
 
+    [Fact]
+    public async Task SendProgram_prefers_primary_and_keeps_the_connection_open()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var primary = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var closedSecondary = FirstFreePort(primary);
+        using var client = new UrScriptClient(
+            Config(IPAddress.Loopback.ToString(), closedSecondary, primary),
+            NullLogger<UrScriptClient>.Instance);
+        var accepted = listener.AcceptTcpClientAsync();
+
+        var send = client.SendProgramAsync(
+            "def start_freedrive():\n  freedrive_mode()\n  while True:\n    sync()\n  end\nend\nstart_freedrive()\n");
+        using var tcp = await accepted;
+        await using var stream = tcp.GetStream();
+        var buffer = new byte[512];
+        var read = await stream.ReadAsync(buffer);
+        await send;
+        listener.Stop();
+
+        var payload = Encoding.ASCII.GetString(buffer, 0, read);
+        Assert.Contains("freedrive_mode()", payload, StringComparison.Ordinal);
+        Assert.Contains("start_freedrive()", payload, StringComparison.Ordinal);
+        var remoteClosed = tcp.Client.Poll(50_000, SelectMode.SelectRead) && tcp.Client.Available == 0;
+        Assert.False(remoteClosed);
+    }
+
     private static HmiConfiguration Config(string ip, int port, int fallback) =>
         HmiConfiguration.CreateDefault() with
         {

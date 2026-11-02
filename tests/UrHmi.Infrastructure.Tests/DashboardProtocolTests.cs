@@ -44,8 +44,10 @@ public sealed class DashboardProtocolTests
         var error = DashboardProtocol.ParseCommandAck("Error: Protective stop");
         var unknown = DashboardProtocol.ParseCommandAck("could not understand 'brakeRelease'");
 
+        Assert.Equal("power on", DashboardProtocol.PowerOnCommand);
         Assert.Equal("brake release", DashboardProtocol.BrakeReleaseCommand);
         Assert.Equal("unlock protective stop", DashboardProtocol.UnlockProtectiveStopCommand);
+        Assert.Equal("is in remote control", DashboardProtocol.IsInRemoteControlCommand);
         Assert.True(ok.Success);
         Assert.Equal("Brake releasing", ok.Value);
         Assert.False(error.Success);

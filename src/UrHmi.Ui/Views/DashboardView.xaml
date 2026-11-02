@@ -256,8 +256,8 @@
             </ItemsControl>
             <StackPanel Grid.Column="1">
               <Button Style="{DynamicResource JogBrakeButtonStyle}"
-                      Command="{Binding ReleaseBrakesCommand}">
-                <TextBlock Text="Brake release"
+                      Command="{Binding InitializeRobotCommand}">
+                <TextBlock Text="Initialize robot"
                            TextWrapping="Wrap"
                            TextAlignment="Center" />
               </Button>

@@ -123,31 +123,88 @@ public sealed class RobotJogServiceTests
     }
 
     [Fact]
-    public async Task Brake_release_is_not_sent_when_disconnected()
+    public async Task Initialize_is_not_sent_when_disconnected()
     {
         var sut = CreateSut(out _, out _, out var dashboard);
 
-        var result = await sut.ReleaseBrakesAsync(Snapshot(LinkState.Disconnected, LinkState.Disconnected));
+        var result = await sut.InitializeAsync(Snapshot(LinkState.Disconnected, LinkState.Disconnected));
 
         Assert.False(result.Succeeded);
-        Assert.Equal(0, dashboard.BrakeCalls);
+        Assert.Empty(dashboard.Commands);
     }
 
     [Fact]
-    public async Task Brake_release_uses_dashboard_when_linked()
+    public async Task Initialize_powers_on_waits_for_idle_then_releases_brakes()
     {
         var sut = CreateSut(out _, out _, out var dashboard);
-        dashboard.BrakeResult = DashboardCommandResult.Ok("Brake releasing", "Brake releasing");
+        dashboard.Remote = "true";
+        dashboard.Safety = "NORMAL";
+        dashboard.Modes.Enqueue("POWER_OFF");
+        dashboard.Modes.Enqueue("BOOTING");
+        dashboard.Modes.Enqueue("POWER_ON");
+        dashboard.Modes.Enqueue("IDLE");
+        dashboard.Modes.Enqueue("IDLE");
+        dashboard.Modes.Enqueue("RUNNING");
 
-        var result = await sut.ReleaseBrakesAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+        var result = await sut.InitializeAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
 
         Assert.True(result.Succeeded);
-        Assert.Equal(1, dashboard.BrakeCalls);
-        Assert.Equal("Brake releasing", result.Message);
+        Assert.Contains("power on", dashboard.Commands);
+        Assert.Contains("brake release", dashboard.Commands);
+        var powerAt = dashboard.Commands.IndexOf("power on");
+        var brakesAt = dashboard.Commands.IndexOf("brake release");
+        Assert.True(powerAt >= 0 && brakesAt > powerAt);
+        Assert.DoesNotContain("brake release", dashboard.Commands.Take(brakesAt), StringComparer.Ordinal);
     }
 
     [Fact]
-    public async Task Motion_and_brake_require_permission()
+    public async Task Initialize_releases_brakes_when_already_idle()
+    {
+        var sut = CreateSut(out _, out _, out var dashboard);
+        dashboard.Remote = "true";
+        dashboard.Safety = "NORMAL";
+        dashboard.Modes.Enqueue("IDLE");
+        dashboard.Modes.Enqueue("IDLE");
+        dashboard.Modes.Enqueue("IDLE");
+        dashboard.Modes.Enqueue("RUNNING");
+
+        var result = await sut.InitializeAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+
+        Assert.True(result.Succeeded);
+        Assert.DoesNotContain("power on", dashboard.Commands);
+        Assert.Contains("brake release", dashboard.Commands);
+    }
+
+    [Fact]
+    public async Task Initialize_does_not_send_power_or_brakes_when_already_running_and_normal()
+    {
+        var sut = CreateSut(out _, out _, out var dashboard);
+        dashboard.Remote = "true";
+        dashboard.Safety = "NORMAL";
+        dashboard.Modes.Enqueue("RUNNING");
+
+        var result = await sut.InitializeAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+
+        Assert.True(result.Succeeded);
+        Assert.DoesNotContain("power on", dashboard.Commands);
+        Assert.DoesNotContain("brake release", dashboard.Commands);
+    }
+
+    [Fact]
+    public async Task Initialize_refuses_local_control()
+    {
+        var sut = CreateSut(out _, out _, out var dashboard);
+        dashboard.Remote = "false";
+
+        var result = await sut.InitializeAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("Remote", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(dashboard.Commands);
+    }
+
+    [Fact]
+    public async Task Motion_init_and_freedrive_require_permission()
     {
         var sut = CreateSut(out var urScript, out var store, out var dashboard, permitted: false);
         store.Poses = Occupied(1, LiveTcp(), LiveJoints());
@@ -155,14 +212,14 @@ public sealed class RobotJogServiceTests
         var linked = Snapshot(LinkState.Connected, LinkState.Connected, tcp: LiveTcp(), joints: LiveJoints());
 
         var go = await sut.GoToAsync(1, linked);
-        var brake = await sut.ReleaseBrakesAsync(linked);
+        var init = await sut.InitializeAsync(linked);
         var freedrive = await sut.EnableFreedriveAsync(linked);
 
         Assert.False(go.Succeeded);
-        Assert.False(brake.Succeeded);
+        Assert.False(init.Succeeded);
         Assert.False(freedrive.Succeeded);
         Assert.Empty(urScript.Sent);
-        Assert.Equal(0, dashboard.BrakeCalls);
+        Assert.Empty(dashboard.Commands);
     }
 
     [Fact]
@@ -178,14 +235,34 @@ public sealed class RobotJogServiceTests
     }
 
     [Fact]
-    public async Task Freedrive_sends_urscript_when_linked()
+    public async Task Freedrive_sends_looping_program_when_running_and_remote()
     {
-        var sut = CreateSut(out var urScript, out _, out _);
+        var sut = CreateSut(out var urScript, out _, out var dashboard);
+        dashboard.Remote = "true";
+        dashboard.Modes.Enqueue("RUNNING");
 
         var result = await sut.EnableFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
 
         Assert.True(result.Succeeded);
-        Assert.Equal("freedrive_mode()\n", Assert.Single(urScript.Sent));
+        var script = Assert.Single(urScript.Programs);
+        Assert.Contains("freedrive_mode()", script, StringComparison.Ordinal);
+        Assert.Contains("while True:", script, StringComparison.Ordinal);
+        Assert.Contains("start_freedrive()", script, StringComparison.Ordinal);
+        Assert.Empty(urScript.Sent);
+    }
+
+    [Fact]
+    public async Task Freedrive_refuses_when_not_powered_on()
+    {
+        var sut = CreateSut(out var urScript, out _, out var dashboard);
+        dashboard.Remote = "true";
+        dashboard.Modes.Enqueue("IDLE");
+
+        var result = await sut.EnableFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("Initialize robot", result.Message, StringComparison.Ordinal);
+        Assert.Empty(urScript.Programs);
     }
 
     [Fact]
@@ -224,12 +301,17 @@ public sealed class RobotJogServiceTests
         urScript = new FakeUrScript();
         store = new MemoryPoseStore();
         dashboard = new FakeDashboard();
-        return new RobotJogService(
+        var sut = new RobotJogService(
             store,
             urScript,
             dashboard,
             new StubAuthorization(permitted),
             NullLogger<RobotJogService>.Instance);
+        sut.ModePollInterval = TimeSpan.FromMilliseconds(1);
+        sut.IdleTimeout = TimeSpan.FromSeconds(2);
+        sut.RunningTimeout = TimeSpan.FromSeconds(2);
+        sut.SafetyTimeout = TimeSpan.FromSeconds(2);
+        return sut;
     }
 
     private static TcpPose LiveTcp() => new(0.1, 0.2, 0.3, 0, 0, 0);
@@ -285,18 +367,32 @@ public sealed class RobotJogServiceTests
     {
         public List<string> Sent { get; } = [];
 
+        public List<string> Programs { get; } = [];
+
         public Task SendAsync(string script, CancellationToken cancellationToken = default)
         {
             Sent.Add(script);
+            return Task.CompletedTask;
+        }
+
+        public Task SendProgramAsync(string script, CancellationToken cancellationToken = default)
+        {
+            Programs.Add(script);
             return Task.CompletedTask;
         }
     }
 
     private sealed class FakeDashboard : IRobotDashboardClient
     {
-        public int BrakeCalls { get; private set; }
+        public Queue<string> Modes { get; } = new();
 
-        public DashboardCommandResult BrakeResult { get; set; } = DashboardCommandResult.Ok("Brake releasing", "Brake releasing");
+        public List<string> Commands { get; } = [];
+
+        public string Remote { get; set; } = "true";
+
+        public string Safety { get; set; } = "NORMAL";
+
+        public string LastMode { get; private set; } = "POWER_OFF";
 
         public ChannelHealth Health { get; } = ChannelHealth.Disconnected(ChannelIds.RobotDashboard);
 
@@ -305,11 +401,18 @@ public sealed class RobotJogServiceTests
 
         public Task DisconnectAsync() => Task.CompletedTask;
 
-        public Task<DashboardCommandResult> GetRobotModeAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(DashboardCommandResult.Failed("unused"));
+        public Task<DashboardCommandResult> GetRobotModeAsync(CancellationToken cancellationToken = default)
+        {
+            if (Modes.Count > 0)
+            {
+                LastMode = Modes.Dequeue();
+            }
+
+            return Task.FromResult(DashboardCommandResult.Ok(LastMode, "Robotmode: " + LastMode));
+        }
 
         public Task<DashboardCommandResult> GetSafetyStatusAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(DashboardCommandResult.Failed("unused"));
+            Task.FromResult(DashboardCommandResult.Ok(Safety, "Safetystatus: " + Safety));
 
         public Task<DashboardCommandResult> GetProgramStateAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(DashboardCommandResult.Failed("unused"));
@@ -320,11 +423,27 @@ public sealed class RobotJogServiceTests
         public Task<DashboardCommandResult> GetPolyscopeVersionAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(DashboardCommandResult.Failed("unused"));
 
+        public Task<DashboardCommandResult> PowerOnAsync(CancellationToken cancellationToken = default)
+        {
+            Commands.Add("power on");
+            return Task.FromResult(DashboardCommandResult.Ok("Powering on", "Powering on"));
+        }
+
         public Task<DashboardCommandResult> BrakeReleaseAsync(CancellationToken cancellationToken = default)
         {
-            BrakeCalls++;
-            return Task.FromResult(BrakeResult);
+            Commands.Add("brake release");
+            return Task.FromResult(DashboardCommandResult.Ok("Brake releasing", "Brake releasing"));
         }
+
+        public Task<DashboardCommandResult> UnlockProtectiveStopAsync(CancellationToken cancellationToken = default)
+        {
+            Commands.Add("unlock protective stop");
+            Safety = "NORMAL";
+            return Task.FromResult(DashboardCommandResult.Ok("Protective stop releasing", "Protective stop releasing"));
+        }
+
+        public Task<DashboardCommandResult> IsInRemoteControlAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(DashboardCommandResult.Ok(Remote, Remote));
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
