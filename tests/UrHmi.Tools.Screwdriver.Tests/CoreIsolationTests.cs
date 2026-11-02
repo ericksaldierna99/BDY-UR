@@ -17,6 +17,22 @@ public sealed class CoreIsolationTests
     }
 
     [Fact]
+    public void SpinBridge_ip_lives_in_plugin_config_not_core()
+    {
+        var root = FindRepoRoot();
+        var pluginJson = File.ReadAllText(Path.Combine(root, "plugins", "UrHmi.Tools.Screwdriver", "screwdriver.json"));
+        var hmiJson = File.ReadAllText(Path.Combine(root, "src", "UrHmi.App", "hmi.json"));
+        var domainConfig = File.ReadAllText(Path.Combine(root, "src", "UrHmi.Domain", "Configuration", "HmiConfiguration.cs"));
+
+        Assert.Contains("\"ip\": \"192.168.37.1\"", pluginJson, StringComparison.Ordinal);
+        Assert.Contains("opcUaPort", pluginJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("spinBridge", hmiJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("opcUaPort", hmiJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("SpinBridge", domainConfig, StringComparison.Ordinal);
+        Assert.DoesNotContain("opcUa", domainConfig, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Plugin_lives_outside_src()
     {
         var root = FindRepoRoot();

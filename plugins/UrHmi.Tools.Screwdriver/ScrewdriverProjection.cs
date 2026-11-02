@@ -24,9 +24,19 @@ public sealed record ScrewdriverSnapshot(
 
 public static class ScrewdriverProjection
 {
-    public static ScrewdriverSnapshot Project(PlcSnapshot plc)
+    public static ScrewdriverSnapshot Project(PlcSnapshot plc, SpinBridgeReading? spinBridge = null)
     {
         ArgumentNullException.ThrowIfNull(plc);
+        spinBridge ??= SpinBridgeReading.Unavailable();
+
+        var torque = FormatMeasured(spinBridge.TorqueNm, " Nm");
+        var angle = FormatMeasured(spinBridge.AngleDeg, "°");
+        if (spinBridge.Channel.Link is LinkState.Disconnected or LinkState.Faulted
+            && torque.Freshness == Freshness.Unavailable)
+        {
+            torque = torque with { Kind = IndicatorKind.CommsLoss };
+            angle = angle with { Kind = IndicatorKind.CommsLoss };
+        }
 
         var mapFreshness = plc.Tags.Freshness;
         var tags = plc.Tags.Value;
@@ -38,8 +48,8 @@ public static class ScrewdriverProjection
             return new ScrewdriverSnapshot(
                 empty with { Kind = IndicatorKind.CommsLoss },
                 empty,
-                empty,
-                empty,
+                torque,
+                angle,
                 empty,
                 empty,
                 empty,
@@ -49,8 +59,6 @@ public static class ScrewdriverProjection
 
         var status = ReadText(tags, ScrewdriverTags.Status, mapFreshness);
         var result = ReadOptionalText(tags, ScrewdriverTags.Result, mapFreshness);
-        var torque = ReadNumber(tags, ScrewdriverTags.TorqueNm, mapFreshness, " Nm");
-        var angle = ReadNumber(tags, ScrewdriverTags.AngleDeg, mapFreshness, "°");
         var cycles = ReadNumber(tags, ScrewdriverTags.CycleCount, mapFreshness, "", "0");
         var program = ReadOptionalText(tags, ScrewdriverTags.ProgramId, mapFreshness);
         var fault = ReadOptionalText(tags, ScrewdriverTags.FaultCode, mapFreshness);
@@ -77,6 +85,20 @@ public static class ScrewdriverProjection
 
     private static ScrewdriverField Unavailable() =>
         new("—", Freshness.Unavailable, CaptionFor(Freshness.Unavailable), IndicatorKind.Normal);
+
+    private static ScrewdriverField FormatMeasured(TimedValue<double> value, string suffix)
+    {
+        if (value.Freshness == Freshness.Unavailable || value.LastValidUtc is null)
+        {
+            return Unavailable() with
+            {
+                Kind = value.Freshness == Freshness.Unavailable ? IndicatorKind.CommsLoss : IndicatorKind.Normal
+            };
+        }
+
+        var text = value.Value.ToString("0.##", CultureInfo.InvariantCulture) + suffix;
+        return new ScrewdriverField(text, value.Freshness, CaptionFor(value.Freshness), IndicatorKind.Normal);
+    }
 
     private static ScrewdriverField ReadText(
         IReadOnlyDictionary<string, PlcValue> tags,

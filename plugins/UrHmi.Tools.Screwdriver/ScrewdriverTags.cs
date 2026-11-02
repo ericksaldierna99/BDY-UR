@@ -8,8 +8,6 @@ public static class ScrewdriverTags
 {
     public const string Status = "screwdriver.status";
     public const string Result = "screwdriver.result";
-    public const string TorqueNm = "screwdriver.torque_nm";
-    public const string AngleDeg = "screwdriver.angle_deg";
     public const string CycleCount = "screwdriver.cycle_count";
     public const string ProgramId = "screwdriver.program_id";
     public const string FaultCode = "screwdriver.fault_code";
@@ -22,8 +20,6 @@ public static class ScrewdriverTags
     [
         Status,
         Result,
-        TorqueNm,
-        AngleDeg,
         CycleCount,
         ProgramId,
         FaultCode,

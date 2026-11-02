@@ -1,0 +1,7 @@
+{
+  "toolModel": "SDV35",
+  "spinBridge": {
+    "ip": "192.168.37.1",
+    "opcUaPort": 4840
+  }
+}

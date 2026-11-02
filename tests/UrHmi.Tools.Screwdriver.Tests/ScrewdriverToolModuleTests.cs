@@ -16,7 +16,8 @@ public sealed class ScrewdriverToolModuleTests
 
         Assert.Equal("screwdriver", module.Id);
         Assert.Equal("Atornillado", module.DisplayName);
-        Assert.Contains(ScrewdriverTags.TorqueNm, module.RequiredPlcTags);
+        Assert.DoesNotContain("screwdriver.torque_nm", module.RequiredPlcTags);
+        Assert.DoesNotContain("screwdriver.angle_deg", module.RequiredPlcTags);
         Assert.IsAssignableFrom<IToolModule>(module);
         Assert.False(typeof(IToolViewFactory).IsAssignableFrom(typeof(ScrewdriverToolModule)));
     }
@@ -29,8 +30,11 @@ public sealed class ScrewdriverToolModuleTests
         using var vm = Assert.IsType<ScrewdriverViewModel>(module.CreateViewModel(new FakeHost()));
 
         Assert.Equal("Atornillado", vm.Title);
+        Assert.Equal(ScrewdriverConfiguration.DefaultSpinBridgeIp, vm.SpinBridgeIp);
+        Assert.Equal("opc.tcp://192.168.37.1:4840", vm.OpcUaEndpoint);
         Assert.Equal("—", vm.StatusText);
         Assert.Equal("sin dato", vm.StatusCaption);
+        Assert.Contains("OPC UA", vm.MapNotice, StringComparison.Ordinal);
     }
 }
 

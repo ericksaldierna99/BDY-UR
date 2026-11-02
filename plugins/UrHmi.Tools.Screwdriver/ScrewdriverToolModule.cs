@@ -13,6 +13,6 @@ public sealed class ScrewdriverToolModule : IToolModule
     public object CreateViewModel(IToolHost host)
     {
         ArgumentNullException.ThrowIfNull(host);
-        return new ScrewdriverViewModel(host);
+        return new ScrewdriverViewModel(host, ScrewdriverConfigStore.LoadOrCreate());
     }
 }

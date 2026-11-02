@@ -18,6 +18,8 @@ public sealed class ScrewdriverProjectionTests
         Assert.False(snapshot.ActuationAvailable);
         Assert.NotEqual(IndicatorKind.Fault, snapshot.Result.Kind);
         Assert.NotEqual(IndicatorKind.Safety, snapshot.Status.Kind);
+        Assert.Equal(Freshness.Unavailable, snapshot.Torque.Freshness);
+        Assert.Equal(IndicatorKind.CommsLoss, snapshot.Torque.Kind);
     }
 
     [Fact]
@@ -28,8 +30,6 @@ public sealed class ScrewdriverProjectionTests
         {
             [ScrewdriverTags.Status] = "running",
             [ScrewdriverTags.Result] = "ok",
-            [ScrewdriverTags.TorqueNm] = 12.5,
-            [ScrewdriverTags.AngleDeg] = 90,
             [ScrewdriverTags.CycleCount] = 4,
             [ScrewdriverTags.ProgramId] = "P1",
             [ScrewdriverTags.FaultCode] = null,
@@ -39,12 +39,11 @@ public sealed class ScrewdriverProjectionTests
         Assert.Equal("running", snapshot.Status.Text);
         Assert.Equal(IndicatorKind.Normal, snapshot.Status.Kind);
         Assert.Equal("ok", snapshot.Result.Text);
-        Assert.Equal("12.5 Nm", snapshot.Torque.Text);
-        Assert.Equal("90°", snapshot.Angle.Text);
+        Assert.Equal("—", snapshot.Torque.Text);
+        Assert.Equal(Freshness.Unavailable, snapshot.Torque.Freshness);
         Assert.Equal("4", snapshot.CycleCount.Text);
         Assert.Equal("P1", snapshot.Program.Text);
         Assert.Equal("Enabled", snapshot.Enabled.Text);
-        Assert.Equal(Freshness.Live, snapshot.Torque.Freshness);
         Assert.True(snapshot.ActuationAvailable);
     }
 
@@ -81,6 +80,30 @@ public sealed class ScrewdriverProjectionTests
         Assert.Equal(Freshness.Stale, snapshot.Status.Freshness);
         Assert.Equal("dato no actualizado", snapshot.Status.Caption);
         Assert.Equal("ready", snapshot.Status.Text);
+    }
+
+    [Fact]
+    public void Torque_and_angle_come_from_spinbridge_opcua_not_plc_tags()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var plc = LivePlc(now, new Dictionary<string, object?>
+        {
+            ["screwdriver.torque_nm"] = 99,
+            ["screwdriver.angle_deg"] = 180,
+            [ScrewdriverTags.Status] = "idle"
+        });
+        var spin = new SpinBridgeReading(
+            new ChannelHealth(SpinBridgeReading.ChannelId, LinkState.Connected, now, TimeSpan.Zero, null),
+            TimedValue<double>.Live(1.25, now),
+            TimedValue<double>.Live(45, now));
+
+        var snapshot = ScrewdriverProjection.Project(plc, spin);
+
+        Assert.Equal("1.25 Nm", snapshot.Torque.Text);
+        Assert.Equal("45°", snapshot.Angle.Text);
+        Assert.Equal(Freshness.Live, snapshot.Torque.Freshness);
+        Assert.Equal(IndicatorKind.Normal, snapshot.Torque.Kind);
+        Assert.DoesNotContain("99", snapshot.Torque.Text, StringComparison.Ordinal);
     }
 
     private static PlcSnapshot LivePlc(DateTimeOffset now, IReadOnlyDictionary<string, object?> values)

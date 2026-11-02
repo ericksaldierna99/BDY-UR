@@ -15,21 +15,32 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
     private readonly IToolHost _host;
     private readonly SynchronizationContext? _ui;
     private readonly IDisposable _plcSubscription;
+    private PlcSnapshot _plc = PlcSnapshot.Empty(DateTimeOffset.UtcNow);
+    private SpinBridgeReading _spinBridge = SpinBridgeReading.Unavailable();
     private int _disposed;
     private bool _faultAlarmRaised;
 
-    public ScrewdriverViewModel(IToolHost host)
+    public ScrewdriverViewModel(IToolHost host, ScrewdriverConfiguration? configuration = null)
     {
         _host = host;
         _ui = SynchronizationContext.Current;
-        Apply(ScrewdriverProjection.Project(PlcSnapshot.Empty(DateTimeOffset.UtcNow)));
+        Configuration = configuration ?? ScrewdriverConfiguration.CreateDefault();
+        Apply(ScrewdriverProjection.Project(_plc, _spinBridge));
         _plcSubscription = host.Plc.Subscribe(new PlcObserver(this));
     }
 
+    public ScrewdriverConfiguration Configuration { get; }
+
     public string Title => "Atornillado";
 
+    public string ToolModel => Configuration.ToolModel;
+
+    public string SpinBridgeIp => Configuration.SpinBridgeIp;
+
+    public string OpcUaEndpoint => Configuration.OpcUaEndpoint;
+
     public string MapNotice =>
-        "This module declares its own PLC tag names. The Micro820 I/O map is not closed, so values stay unavailable until the PLC publishes those keys. Core projects do not reference this assembly.";
+        $"Torque and angle come from SpinBridge OPC UA at {Configuration.OpcUaEndpoint} (SDV35), not from the UR or PLC tags. Remaining I/O waits on the Micro820 map. Core projects do not reference this assembly.";
 
     [ObservableProperty]
     private string _statusText = "—";
@@ -147,11 +158,22 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
 
     internal void ApplyPlc(PlcSnapshot snapshot)
     {
-        var projected = ScrewdriverProjection.Project(snapshot);
         Post(() =>
         {
+            _plc = snapshot;
+            var projected = ScrewdriverProjection.Project(_plc, _spinBridge);
             Apply(projected);
             SyncFaultAlarm(projected.Fault);
+        });
+    }
+
+    internal void ApplySpinBridge(SpinBridgeReading reading)
+    {
+        ArgumentNullException.ThrowIfNull(reading);
+        Post(() =>
+        {
+            _spinBridge = reading;
+            Apply(ScrewdriverProjection.Project(_plc, _spinBridge));
         });
     }
 

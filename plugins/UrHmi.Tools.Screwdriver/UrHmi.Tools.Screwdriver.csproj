@@ -22,11 +22,23 @@
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="UrHmi.Tools.Screwdriver.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="screwdriver.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <Target Name="CopyToAppPlugins" AfterTargets="Build">
     <PropertyGroup>
       <_AppPluginsDir>$(MSBuildThisFileDirectory)..\..\src\UrHmi.App\bin\$(Configuration)\$(TargetFramework)\plugins\</_AppPluginsDir>
     </PropertyGroup>
     <MakeDir Directories="$(_AppPluginsDir)" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_AppPluginsDir)" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <_PluginCopy Include="$(TargetPath)" />
+      <_PluginCopy Include="$(ProjectDir)screwdriver.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PluginCopy)" DestinationFolder="$(_AppPluginsDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>

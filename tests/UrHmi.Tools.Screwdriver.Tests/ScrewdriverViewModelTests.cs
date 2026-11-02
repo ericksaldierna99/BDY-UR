@@ -68,6 +68,22 @@ public sealed class ScrewdriverViewModelTests
     }
 
     [Fact]
+    public void SpinBridge_opcua_updates_torque_and_angle()
+    {
+        using var vm = new ScrewdriverViewModel(new FakeHost());
+        var now = DateTimeOffset.UtcNow;
+
+        vm.ApplySpinBridge(new SpinBridgeReading(
+            new ChannelHealth(SpinBridgeReading.ChannelId, LinkState.Connected, now, TimeSpan.Zero, null),
+            TimedValue<double>.Live(2.4, now),
+            TimedValue<double>.Live(30, now)));
+
+        Assert.Equal("2.4 Nm", vm.TorqueText);
+        Assert.Equal("30°", vm.AngleText);
+        Assert.Equal(string.Empty, vm.TorqueCaption);
+    }
+
+    [Fact]
     public void Commands_are_disabled_when_the_plc_is_disconnected()
     {
         using var vm = new ScrewdriverViewModel(new FakeHost());

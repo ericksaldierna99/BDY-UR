@@ -10,6 +10,26 @@
       <WrapPanel>
         <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
           <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Tool" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding ToolModel}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="SpinBridge IP" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding SpinBridgeIp}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="220">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="OPC UA" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding OpcUaEndpoint}" />
+          </StackPanel>
+        </Border>
+      </WrapPanel>
+      <WrapPanel>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
+          <StackPanel>
             <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Status" />
             <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding StatusText}" />
             <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding StatusCaption}" />
@@ -24,14 +44,14 @@
         </Border>
         <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
           <StackPanel>
-            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Torque" />
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Torque (OPC UA)" />
             <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding TorqueText}" />
             <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding TorqueCaption}" />
           </StackPanel>
         </Border>
         <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
           <StackPanel>
-            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Angle" />
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Angle (OPC UA)" />
             <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding AngleText}" />
             <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding AngleCaption}" />
           </StackPanel>
