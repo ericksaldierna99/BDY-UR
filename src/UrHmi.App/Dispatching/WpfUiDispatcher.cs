@@ -25,4 +25,39 @@ public sealed class WpfUiDispatcher : IUiDispatcher
 
         _dispatcher.BeginInvoke(action);
     }
+
+    public void Invoke(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        if (_dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        _dispatcher.Invoke(action);
+    }
+
+    public T Invoke<T>(Func<T> func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+        if (_dispatcher.CheckAccess())
+        {
+            return func();
+        }
+
+        return _dispatcher.Invoke(func);
+    }
+
+    public Task InvokeAsync(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        if (_dispatcher.CheckAccess())
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        return _dispatcher.InvokeAsync(action).Task;
+    }
 }

@@ -12,5 +12,6 @@
     <Project Path="tests/UrHmi.Application.Tests/UrHmi.Application.Tests.csproj" />
     <Project Path="tests/UrHmi.Domain.Tests/UrHmi.Domain.Tests.csproj" />
     <Project Path="tests/UrHmi.Infrastructure.Tests/UrHmi.Infrastructure.Tests.csproj" />
+    <Project Path="tests/UrHmi.Presentation.Tests/UrHmi.Presentation.Tests.csproj" />
   </Folder>
 </Solution>

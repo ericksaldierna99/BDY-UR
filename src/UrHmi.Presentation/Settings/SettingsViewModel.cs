@@ -104,33 +104,33 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanRunDiagnostics))]
     private async Task TestConnectionAsync()
     {
-        await RunDiagnosticsAsync(() => _robotControl.ProbeAsync()).ConfigureAwait(true);
+        await RunDiagnosticsAsync(() => _robotControl.ProbeAsync()).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanRunDiagnostics))]
     private async Task ReconnectAsync()
     {
-        await RunDiagnosticsAsync(() => _robotControl.ReconnectAsync()).ConfigureAwait(true);
+        await RunDiagnosticsAsync(() => _robotControl.ReconnectAsync()).ConfigureAwait(false);
     }
 
     private bool CanRunDiagnostics() => !IsBusy;
 
     private async Task RunDiagnosticsAsync(Func<Task> action)
     {
-        IsBusy = true;
+        await _dispatcher.InvokeAsync(() => IsBusy = true).ConfigureAwait(false);
         try
         {
             await action().ConfigureAwait(false);
             var probe = await _robotControl.ProbeAsync().ConfigureAwait(false);
-            OnUi(() => ApplyProbe(probe));
+            await _dispatcher.InvokeAsync(() => ApplyProbe(probe)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            OnUi(() => ProbeSummary = ex.Message);
+            await _dispatcher.InvokeAsync(() => ProbeSummary = ex.Message).ConfigureAwait(false);
         }
         finally
         {
-            IsBusy = false;
+            await _dispatcher.InvokeAsync(() => IsBusy = false).ConfigureAwait(false);
         }
     }
 

@@ -257,9 +257,12 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunJogAsync(() => _jog.SaveCurrentAsync(slot, _robot.Current)).ConfigureAwait(true);
-        StoredCoordinatesText = UrScriptCommands.FormatStored(_jog.Slots[slot - 1]);
-        RefreshJogCaptions();
+        await RunJogAsync(() => _jog.SaveCurrentAsync(slot, _robot.Current)).ConfigureAwait(false);
+        await _dispatcher.InvokeAsync(() =>
+        {
+            StoredCoordinatesText = UrScriptCommands.FormatStored(_jog.Slots[slot - 1]);
+            RefreshJogCaptions();
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanRunJogAction))]
@@ -277,7 +280,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunJogAsync(() => _jog.GoToAsync(slot, _robot.Current)).ConfigureAwait(true);
+        await RunJogAsync(() => _jog.GoToAsync(slot, _robot.Current)).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanRunJogAction))]
@@ -288,26 +291,37 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunJogAsync(() => _jog.ReleaseBrakesAsync(_robot.Current)).ConfigureAwait(true);
+        await RunJogAsync(() => _jog.ReleaseBrakesAsync(_robot.Current)).ConfigureAwait(false);
     }
 
     private bool CanRunJogAction() => IsRobotConnected && !IsJogBusy;
 
     private async Task RunJogAsync(Func<Task<JogResult>> action)
     {
-        IsJogBusy = true;
+        await _dispatcher.InvokeAsync(() => IsJogBusy = true).ConfigureAwait(false);
         try
         {
             var result = await action().ConfigureAwait(false);
-            JogStatusText = result.Message;
-            if (!result.Succeeded)
+            await _dispatcher.InvokeAsync(() =>
             {
-                _prompt.Inform("Robot JOG", result.Message);
-            }
+                JogStatusText = result.Message;
+                if (!result.Succeeded)
+                {
+                    _prompt.Inform("Robot JOG", result.Message);
+                }
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await _dispatcher.InvokeAsync(() =>
+            {
+                JogStatusText = ex.Message;
+                _prompt.Inform("Robot JOG", ex.Message);
+            }).ConfigureAwait(false);
         }
         finally
         {
-            IsJogBusy = false;
+            await _dispatcher.InvokeAsync(() => IsJogBusy = false).ConfigureAwait(false);
         }
     }
 
