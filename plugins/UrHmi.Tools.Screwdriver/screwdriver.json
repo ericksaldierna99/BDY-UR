@@ -3,6 +3,7 @@
   "spinBridge": {
     "ip": "10.42.0.1",
     "opcUaPort": 4840,
+    "httpPort": 80,
     "staleTimeoutMs": 2000
   }
 }

@@ -10,7 +10,7 @@ internal sealed class FakeOpcUaChannel : IOpcUaChannel
 
     public Dictionary<string, object?> Values { get; } = new(StringComparer.Ordinal);
 
-    public bool IsConnected { get; set; } = true;
+    public bool IsConnected { get; set; }
 
     public bool DisconnectRequested { get; private set; }
 

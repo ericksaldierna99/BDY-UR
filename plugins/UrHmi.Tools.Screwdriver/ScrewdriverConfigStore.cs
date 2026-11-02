@@ -129,10 +129,15 @@ public sealed class ScrewdriverConfigStore
                     ? ScrewdriverConfiguration.DefaultToolModel
                     : ToolModel,
                 SpinBridge.Ip ?? string.Empty,
-                SpinBridge.OpcUaPort,
+                SpinBridge.OpcUaPort <= 0
+                    ? ScrewdriverConfiguration.DefaultOpcUaPort
+                    : SpinBridge.OpcUaPort,
                 SpinBridge.StaleTimeoutMs <= 0
                     ? ScrewdriverConfiguration.DefaultStaleTimeoutMs
-                    : SpinBridge.StaleTimeoutMs);
+                    : SpinBridge.StaleTimeoutMs,
+                SpinBridge.HttpPort <= 0
+                    ? ScrewdriverConfiguration.DefaultHttpPort
+                    : SpinBridge.HttpPort);
 
         public static Document FromDomain(ScrewdriverConfiguration configuration) =>
             new()
@@ -142,6 +147,7 @@ public sealed class ScrewdriverConfigStore
                 {
                     Ip = configuration.SpinBridgeIp,
                     OpcUaPort = configuration.OpcUaPort,
+                    HttpPort = configuration.HttpPort,
                     StaleTimeoutMs = configuration.StaleTimeoutMs
                 }
             };
@@ -152,6 +158,8 @@ public sealed class ScrewdriverConfigStore
         public string? Ip { get; init; }
 
         public int OpcUaPort { get; init; } = ScrewdriverConfiguration.DefaultOpcUaPort;
+
+        public int HttpPort { get; init; } = ScrewdriverConfiguration.DefaultHttpPort;
 
         public int StaleTimeoutMs { get; init; } = ScrewdriverConfiguration.DefaultStaleTimeoutMs;
     }

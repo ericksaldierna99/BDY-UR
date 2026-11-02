@@ -194,6 +194,63 @@ public sealed class SpinBridgeOpcUaClientTests
     }
 
     [Fact]
+    public async Task Probe_skips_closed_opc_ports_and_connects_the_open_one()
+    {
+        var channel = SpinTree(torque: 1.2, angle: 8);
+        var probe = new FakeOpcPortProbe { OpenPorts = { 4841 } };
+        using var client = new SpinBridgeOpcUaClient(TestConfig(), channel, portProbe: probe);
+        client.Start();
+
+        var reading = await WaitForAsync(client, value => value.TorqueNm.Freshness == Freshness.Live);
+        Assert.Equal("opc.tcp://10.42.0.1:4841", Assert.Single(channel.ConnectCalls));
+        Assert.Equal(1.2, reading.TorqueNm.Value);
+        Assert.Contains(probe.Calls, call => call.Port == 4840);
+        Assert.Contains(probe.Calls, call => call.Port == 4841);
+        Assert.Null(reading.Channel.LastError);
+    }
+
+    [Fact]
+    public async Task Http_fallback_maps_torque_when_opc_ports_are_closed()
+    {
+        var channel = new FakeOpcUaChannel();
+        channel.ConnectHandler = (_, _) => throw new IOException("connection refused");
+        var probe = new FakeOpcPortProbe();
+        var http = new FakeSpinHttpApi
+        {
+            Next = new SpinHttpRead(0, 1.5, "/api/results/latest", null)
+        };
+
+        using var client = new SpinBridgeOpcUaClient(TestConfig(), channel, http, probe);
+        client.Start();
+
+        var reading = await WaitForAsync(client, value =>
+            value.TorqueNm.Freshness == Freshness.Live
+            && value.Channel.LastError is not null);
+
+        Assert.Equal("http://10.42.0.1:80", Assert.Single(http.Calls));
+        Assert.Equal(0, reading.TorqueNm.Value);
+        Assert.Equal(1.5, reading.AngleDeg.Value);
+        Assert.Contains("OPC UA", reading.Channel.LastError, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("HTTP", reading.Channel.LastError, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("4840 closed", reading.Channel.LastError, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Empty_ip_never_calls_http()
+    {
+        var http = new FakeSpinHttpApi();
+        var configuration = new ScrewdriverConfiguration("SDV35", "", 4840, 2000);
+        using var client = new SpinBridgeOpcUaClient(configuration, new FakeOpcUaChannel(), http);
+        client.Start();
+
+        await WaitForAsync(client, value =>
+            value.Channel.Link == LinkState.Disconnected
+            && value.Channel.LastError is not null);
+
+        Assert.Empty(http.Calls);
+    }
+
+    [Fact]
     public async Task Failed_connect_retries_the_configured_endpoint()
     {
         var channel = SpinTree(torque: 1, angle: 2);

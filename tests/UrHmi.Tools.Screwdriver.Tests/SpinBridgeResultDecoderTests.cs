@@ -118,6 +118,45 @@ public sealed class SpinBridgeResultDecoderTests
     }
 
     [Fact]
+    public void Json_dashboard_payload_maps_zero_nm_not_ok()
+    {
+        using var document = System.Text.Json.JsonDocument.Parse(
+            """
+            {
+              "results": [
+                {
+                  "resultEvaluation": "NOT_OK",
+                  "overallResultValues": [
+                    { "name": "Final Torque", "measuredValue": 0 },
+                    { "name": "Final Angle", "measuredValue": 0 }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var pair = SpinBridgeResultDecoder.Decode(latestResult: SpinBridgeJson.ToObject(document.RootElement));
+
+        Assert.Equal(0, pair.TorqueNm);
+        Assert.Equal(0, pair.AngleDeg);
+    }
+
+    [Fact]
+    public void Http_torque_angle_property_names_are_decoded()
+    {
+        var latest = new Dictionary<string, object?>
+        {
+            ["torque"] = 0.8,
+            ["angle"] = 12
+        };
+
+        var pair = SpinBridgeResultDecoder.Decode(latestResult: latest);
+
+        Assert.Equal(0.8, pair.TorqueNm);
+        Assert.Equal(12, pair.AngleDeg);
+    }
+
+    [Fact]
     public void Undecoded_bytes_describe_a_failure()
     {
         var latest = new byte[] { 1, 2, 3, 4 };
@@ -135,8 +174,10 @@ public sealed class SpinBridgeResultDecoderTests
     public void Torque_and_angle_names_are_recognized()
     {
         Assert.True(SpinBridgeResultDecoder.IsTorqueName("Final Torque (Nm)"));
+        Assert.True(SpinBridgeResultDecoder.IsTorqueName("torque"));
         Assert.True(SpinBridgeResultDecoder.IsAngleName("Final Angle (°)"));
         Assert.True(SpinBridgeResultDecoder.IsAngleName("Final Angle (deg)"));
+        Assert.True(SpinBridgeResultDecoder.IsAngleName("angle"));
         Assert.True(SpinBridgeResultDecoder.IsOverallName("overallResultValues"));
         Assert.False(SpinBridgeResultDecoder.IsTorqueName("Peak Current (A)"));
     }

@@ -12,7 +12,9 @@ public sealed class ScrewdriverConfigStoreTests
 
         Assert.Equal("10.42.0.1", configuration.SpinBridgeIp);
         Assert.Equal(4840, configuration.OpcUaPort);
+        Assert.Equal(80, configuration.HttpPort);
         Assert.Equal("opc.tcp://10.42.0.1:4840", configuration.OpcUaEndpoint);
+        Assert.Equal("http://10.42.0.1:80", configuration.HttpBase);
         Assert.Equal("SDV35", configuration.ToolModel);
         Assert.Equal(2000, configuration.StaleTimeoutMs);
         Assert.Empty(configuration.Validate());

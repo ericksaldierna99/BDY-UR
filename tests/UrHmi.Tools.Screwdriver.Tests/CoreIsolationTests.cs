@@ -26,6 +26,7 @@ public sealed class CoreIsolationTests
 
         Assert.Contains("\"ip\": \"10.42.0.1\"", pluginJson, StringComparison.Ordinal);
         Assert.Contains("opcUaPort", pluginJson, StringComparison.Ordinal);
+        Assert.Contains("httpPort", pluginJson, StringComparison.Ordinal);
         Assert.Contains("staleTimeoutMs", pluginJson, StringComparison.Ordinal);
         Assert.DoesNotContain("spinBridge", hmiJson, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("opcUaPort", hmiJson, StringComparison.Ordinal);

@@ -299,22 +299,22 @@ public static class SpinBridgeResultDecoder
     {
         var normalized = Normalize(name);
         return normalized is "final torque (nm)" or "final torque nm" or "finaltorque" or "finaltorquenm"
+            or "torque" or "torquenm"
             || normalized.Contains("final torque", StringComparison.Ordinal)
             || (normalized.Contains("torque", StringComparison.Ordinal)
                 && normalized.Contains("nm", StringComparison.Ordinal)
-                && normalized.Contains("final", StringComparison.Ordinal));
+                && (normalized.Contains("final", StringComparison.Ordinal) || normalized is "torque nm"));
     }
 
     internal static bool IsAngleName(string name)
     {
         var normalized = Normalize(name);
         return normalized is "final angle (°)" or "final angle (deg)" or "final angle deg" or "finalangle"
-            or "finalangledeg"
+            or "finalangledeg" or "angle" or "angledeg" or "angle deg"
             || normalized.Contains("final angle", StringComparison.Ordinal)
             || (normalized.Contains("angle", StringComparison.Ordinal)
                 && normalized.Contains("final", StringComparison.Ordinal)
-                && (normalized.Contains("deg", StringComparison.Ordinal)
-                    || normalized.Contains('°')));
+                && (normalized.Contains("deg", StringComparison.Ordinal) || normalized.Contains('°')));
     }
 
     internal static bool IsOverallName(string name) =>
@@ -326,7 +326,8 @@ public static class SpinBridgeResultDecoder
         var text = ReadName(name) ?? name;
         return string.Join(
             " ",
-            text.Replace('°', '°').Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            text.Replace('_', ' ').Replace('-', ' ').Replace('°', '°').Trim().ToLowerInvariant()
+                .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
     private static string? ReadName(object? value) => value switch

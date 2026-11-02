@@ -6,9 +6,14 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
 {
     private static readonly TimeSpan WatchdogPeriod = TimeSpan.FromMilliseconds(100);
 
+    private static readonly TimeSpan PortProbeTimeout = TimeSpan.FromMilliseconds(400);
+
     private readonly ScrewdriverConfiguration _configuration;
     private readonly IOpcUaChannel _channel;
+    private readonly ISpinHttpApi? _http;
+    private readonly IOpcPortProbe? _portProbe;
     private readonly bool _ownsChannel;
+    private readonly bool _ownsHttp;
     private readonly SpinBridgeReadingAggregator _aggregator = new();
     private readonly ReadingBroadcaster _readings = new(SpinBridgeReading.Unavailable());
     private readonly TimeSpan _staleTimeout;
@@ -20,15 +25,25 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
     private string? _latestResultId;
     private string? _resolveError;
     private string? _lastError;
+    private string? _lastOpcError;
+    private int? _connectedPort;
+    private bool _hadOpcSession;
     private int _started;
     private int _disposed;
 
-    public SpinBridgeOpcUaClient(ScrewdriverConfiguration configuration, IOpcUaChannel? channel = null)
+    public SpinBridgeOpcUaClient(
+        ScrewdriverConfiguration configuration,
+        IOpcUaChannel? channel = null,
+        ISpinHttpApi? http = null,
+        IOpcPortProbe? portProbe = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         _configuration = configuration;
         _ownsChannel = channel is null;
         _channel = channel ?? new OpcUaChannel();
+        _ownsHttp = http is null && _ownsChannel;
+        _http = http ?? (_ownsChannel ? new SpinDashboardHttpClient() : null);
+        _portProbe = portProbe ?? (_ownsChannel ? new TcpOpcPortProbe() : null);
         _staleTimeout = TimeSpan.FromMilliseconds(Math.Max(1, configuration.StaleTimeoutMs));
         _pollInterval = TimeSpan.FromMilliseconds(Math.Clamp(configuration.StaleTimeoutMs / 4.0, 250, 1000));
     }
@@ -63,6 +78,11 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         {
             _channel.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
+
+        if (_ownsHttp && _http is IDisposable disposableHttp)
+        {
+            disposableHttp.Dispose();
+        }
     }
 
     public IDisposable Subscribe(IObserver<SpinBridgeReading> observer) => _readings.Subscribe(observer);
@@ -86,39 +106,62 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         {
             try
             {
-                _latestResultId = null;
-                _resolveError = null;
-                _aggregator.SetChannel(new ChannelHealth(
-                    SpinBridgeReading.ChannelId,
-                    attempt > 0 ? LinkState.Reconnecting : LinkState.Connecting,
-                    null,
-                    null,
-                    _lastError));
-                Publish();
-
-                await _channel.ConnectAsync(_configuration.OpcUaEndpoint, cancellationToken).ConfigureAwait(false);
-                attempt = 0;
-                _lastError = null;
-                _aggregator.SetChannel(new ChannelHealth(
-                    SpinBridgeReading.ChannelId,
-                    LinkState.Connected,
-                    DateTimeOffset.UtcNow,
-                    TimeSpan.Zero,
-                    null));
-                Publish();
-
-                while (!cancellationToken.IsCancellationRequested && _channel.IsConnected)
+                if (!_channel.IsConnected)
                 {
-                    await PollAsync(cancellationToken).ConfigureAwait(false);
-                    await Task.Delay(_pollInterval, cancellationToken).ConfigureAwait(false);
-                }
+                    if (_hadOpcSession)
+                    {
+                        _hadOpcSession = false;
+                        _connectedPort = null;
+                        _lastOpcError ??= "OPC UA session dropped.";
+                        _lastError = _lastOpcError;
+                        _aggregator.SetChannel(
+                            ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
+                        Publish();
+                        await PollHttpAsync(cancellationToken).ConfigureAwait(false);
+                        var dropDelay = SpinBridgeReconnectBackoff.Delay(attempt++);
+                        await Task.Delay(dropDelay, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
 
-                if (!cancellationToken.IsCancellationRequested && !_channel.IsConnected)
-                {
-                    _aggregator.SetChannel(
-                        ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, "OPC UA session dropped."));
+                    _latestResultId = null;
+                    _resolveError = null;
+                    _connectedPort = null;
+                    _aggregator.SetChannel(new ChannelHealth(
+                        SpinBridgeReading.ChannelId,
+                        attempt > 0 ? LinkState.Reconnecting : LinkState.Connecting,
+                        null,
+                        null,
+                        _lastError));
                     Publish();
+
+                    await TryConnectOpcAsync(cancellationToken).ConfigureAwait(false);
+                    if (_channel.IsConnected)
+                    {
+                        _hadOpcSession = true;
+                    }
                 }
+
+                var hasOpcValues = false;
+                if (_channel.IsConnected)
+                {
+                    attempt = 0;
+                    await PollAsync(cancellationToken).ConfigureAwait(false);
+                    hasOpcValues = HasLiveValues();
+                }
+
+                if (!hasOpcValues)
+                {
+                    await PollHttpAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                if (!cancellationToken.IsCancellationRequested && !_channel.IsConnected && !HasLiveValues())
+                {
+                    var delay = SpinBridgeReconnectBackoff.Delay(attempt++);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                await Task.Delay(_pollInterval, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -126,6 +169,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
             }
             catch (Exception ex)
             {
+                _lastOpcError = ex.Message;
                 _lastError = ex.Message;
                 _aggregator.SetChannel(
                     ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
@@ -138,23 +182,182 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                 {
                     // Best-effort close before reconnect.
                 }
-            }
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
+                try
+                {
+                    await PollHttpAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // HTTP is a fallback; OPC error stays in LastError.
+                }
 
-            var delay = SpinBridgeReconnectBackoff.Delay(attempt++);
-            try
-            {
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                var delay = SpinBridgeReconnectBackoff.Delay(attempt++);
+                try
+                {
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
+    }
+
+    private async Task TryConnectOpcAsync(CancellationToken cancellationToken)
+    {
+        var errors = new List<string>();
+        var ports = _connectedPort is { } last
+            ? _configuration.OpcUaPortsToProbe.Prepend(last).Distinct()
+            : _configuration.OpcUaPortsToProbe;
+
+        if (_portProbe is null)
+        {
+            ports = [_configuration.OpcUaPort];
+        }
+
+        foreach (var port in ports)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var endpoint = $"opc.tcp://{_configuration.SpinBridgeIp}:{port}";
+            if (_portProbe is not null)
+            {
+                var open = await _portProbe
+                    .IsOpenAsync(_configuration.SpinBridgeIp, port, PortProbeTimeout, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!open)
+                {
+                    errors.Add($"{port} closed");
+                    continue;
+                }
+            }
+
+            try
+            {
+                await _channel.ConnectAsync(endpoint, cancellationToken).ConfigureAwait(false);
+                if (_channel.IsConnected)
+                {
+                    _connectedPort = port;
+                    _lastOpcError = null;
+                    _lastError = null;
+                    _aggregator.SetChannel(new ChannelHealth(
+                        SpinBridgeReading.ChannelId,
+                        LinkState.Connected,
+                        DateTimeOffset.UtcNow,
+                        TimeSpan.Zero,
+                        null));
+                    Publish();
+                    return;
+                }
+
+                errors.Add($"{port} session not connected");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException
+                || !cancellationToken.IsCancellationRequested)
+            {
+                errors.Add($"{port}: {ex.Message}");
+                try
+                {
+                    await _channel.DisconnectAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+
+        _lastOpcError = errors.Count == 0
+            ? $"OPC UA {_configuration.OpcUaEndpoint} did not connect."
+            : $"OPC UA {_configuration.SpinBridgeIp} " + string.Join("; ", errors);
+        _lastError = _lastOpcError;
+        _aggregator.SetChannel(
+            ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
+        Publish();
+    }
+
+    private async Task PollHttpAsync(CancellationToken cancellationToken)
+    {
+        if (_http is null)
+        {
+            return;
+        }
+
+        SpinHttpRead read;
+        try
+        {
+            read = await _http.ReadLatestAsync(_configuration.HttpBase, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException
+            || !cancellationToken.IsCancellationRequested)
+        {
+            _lastError = CombineErrors(_lastOpcError, ex.Message);
+            if (!_channel.IsConnected)
+            {
+                _aggregator.SetChannel(
+                    ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
+            }
+
+            Publish();
+            return;
+        }
+
+        if (read.TorqueNm is not null || read.AngleDeg is not null)
+        {
+            var viaHttp = string.IsNullOrWhiteSpace(read.Path)
+                ? _configuration.HttpBase
+                : _configuration.HttpBase + read.Path;
+            _lastError = string.IsNullOrWhiteSpace(_lastOpcError)
+                ? null
+                : $"{_lastOpcError}. Using HTTP {viaHttp}.";
+            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, read.TorqueNm, read.AngleDeg, _lastError);
+            Publish();
+            return;
+        }
+
+        _lastError = CombineErrors(_lastOpcError, read.Error);
+        if (_channel.IsConnected)
+        {
+            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, null, null, _lastError);
+        }
+        else
+        {
+            _aggregator.SetChannel(
+                ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
+        }
+
+        Publish();
+    }
+
+    private bool HasLiveValues()
+    {
+        var current = Current;
+        return current.TorqueNm.Freshness == Freshness.Live
+            || current.AngleDeg.Freshness == Freshness.Live;
+    }
+
+    private static string? CombineErrors(string? opc, string? http)
+    {
+        if (string.IsNullOrWhiteSpace(opc))
+        {
+            return http;
+        }
+
+        if (string.IsNullOrWhiteSpace(http))
+        {
+            return opc;
+        }
+
+        return $"{opc}. {http}";
     }
 
     private async Task PollAsync(CancellationToken cancellationToken)
@@ -168,6 +371,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         {
             _lastError = _resolveError
                 ?? "LatestResult was not found under TighteningSystem/ResultManagement/Results.";
+            _lastOpcError = _lastError;
             _aggregator.ApplyPoll(DateTimeOffset.UtcNow, null, null, _lastError);
             Publish();
             return;
@@ -176,6 +380,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         var (pair, latest) = await ReadLatestAsync(_latestResultId, ct).ConfigureAwait(false);
         var decodeError = SpinBridgeResultDecoder.DescribeFailure(latest, pair);
         _lastError = decodeError;
+        _lastOpcError = decodeError;
         _aggregator.ApplyPoll(DateTimeOffset.UtcNow, pair.TorqueNm, pair.AngleDeg, decodeError);
         Publish();
     }
