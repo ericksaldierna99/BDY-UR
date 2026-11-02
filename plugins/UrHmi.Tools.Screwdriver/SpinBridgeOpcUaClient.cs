@@ -229,7 +229,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                 return;
             }
 
-            var endpoint = $"opc.tcp://{_configuration.SpinBridgeIp}:{port}";
+            var endpoint = OpcEndpointUrls.Canonical(_configuration.SpinBridgeIp, port);
             if (_portProbe is not null)
             {
                 var open = await _portProbe
@@ -237,7 +237,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                     .ConfigureAwait(false);
                 if (!open)
                 {
-                    errors.Add($"{port} closed");
+                    errors.Add($"{endpoint} closed");
                     continue;
                 }
             }
@@ -260,12 +260,12 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                     return;
                 }
 
-                errors.Add($"{port} session not connected");
+                errors.Add($"{endpoint} session not connected");
             }
             catch (Exception ex) when (ex is not OperationCanceledException
                 || !cancellationToken.IsCancellationRequested)
             {
-                errors.Add($"{port}: {ex.Message}");
+                errors.Add($"{endpoint}: {ex.Message}");
                 try
                 {
                     await _channel.DisconnectAsync(CancellationToken.None).ConfigureAwait(false);
@@ -278,7 +278,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
 
         _lastOpcError = errors.Count == 0
             ? $"OPC UA {_configuration.OpcUaEndpoint} did not connect."
-            : $"OPC UA {_configuration.SpinBridgeIp} " + string.Join("; ", errors);
+            : "OPC UA " + string.Join("; ", errors);
         _lastError = _lastOpcError;
         _aggregator.SetChannel(
             ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));

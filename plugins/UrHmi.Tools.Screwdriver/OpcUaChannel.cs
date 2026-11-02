@@ -26,6 +26,7 @@ public sealed class OpcUaChannel : IOpcUaChannel
     public async Task ConnectAsync(string endpointUrl, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(endpointUrl);
+        var discoveryUrl = OpcEndpointUrls.Canonical(endpointUrl);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -33,15 +34,19 @@ public sealed class OpcUaChannel : IOpcUaChannel
 
             var application = new ApplicationInstance(_telemetry)
             {
-                ApplicationName = "UrHmi.Screwdriver",
+                ApplicationName = OpcEndpointUrls.ApplicationName,
                 ApplicationType = ApplicationType.Client
             };
 
 #pragma warning disable CS0618
             var configuration = await application
-                .Build("UrHmi.Screwdriver", "urn:bdy:urhmi:screwdriver")
+                .Build(OpcEndpointUrls.ApplicationUri, OpcEndpointUrls.ProductUri)
                 .AsClient()
-                .AddSecurityConfiguration("CN=UrHmi.Screwdriver", PkiRoot, PkiRoot, Path.Combine(PkiRoot, "rejected"))
+                .AddSecurityConfiguration(
+                    $"CN={OpcEndpointUrls.ApplicationName}",
+                    PkiRoot,
+                    PkiRoot,
+                    Path.Combine(PkiRoot, "rejected"))
 #pragma warning restore CS0618
                 .SetAutoAcceptUntrustedCertificates(true)
                 .SetRejectSHA1SignedCertificates(false)
@@ -59,13 +64,13 @@ public sealed class OpcUaChannel : IOpcUaChannel
 
             var description = await CoreClientUtils.SelectEndpointAsync(
                     configuration,
-                    endpointUrl,
+                    discoveryUrl,
                     useSecurity: false,
                     DiscoverTimeoutMs,
                     _telemetry,
                     cancellationToken)
                 .ConfigureAwait(false)
-                ?? throw new InvalidOperationException($"No OPC UA endpoint was found at {endpointUrl}.");
+                ?? throw new InvalidOperationException($"No OPC UA endpoint was found at {discoveryUrl}.");
             var endpoint = new ConfiguredEndpoint(
                 collection: null,
                 description,
@@ -75,7 +80,7 @@ public sealed class OpcUaChannel : IOpcUaChannel
                     configuration,
                     endpoint,
                     updateBeforeConnect: false,
-                    sessionName: "UrHmi.Screwdriver",
+                    sessionName: OpcEndpointUrls.ApplicationName,
                     sessionTimeout: SessionTimeoutMs,
                     identity: new UserIdentity(),
                     preferredLocales: [],
@@ -83,6 +88,12 @@ public sealed class OpcUaChannel : IOpcUaChannel
                 .ConfigureAwait(false);
 
             await LoadComplexTypesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (UriFormatException ex)
+        {
+            throw new InvalidOperationException(
+                $"OPC UA {discoveryUrl} is not a valid URI ({ex.Message}). Use {OpcEndpointUrls.Scheme}://host:port, for example opc.tcp://10.42.0.1:4840.",
+                ex);
         }
         finally
         {

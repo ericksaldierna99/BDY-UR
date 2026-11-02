@@ -48,6 +48,56 @@ public sealed class SpinDashboardHttpClientTests
         Assert.Contains("HTTP", read.Error, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Spa_bundle_fetch_path_is_used_instead_of_guessed_latest_url()
+    {
+        var handler = new MapHandler
+        {
+            ["/"] = (
+                200,
+                """
+                <html>
+                  <head>
+                    <script type="module" src="/assets/index-results.js"></script>
+                  </head>
+                  <body>Spin Dashboard</body>
+                </html>
+                """,
+                "text/html"),
+            ["/assets/index-results.js"] = (
+                200,
+                """
+                const route = '#/results';
+                fetch('/api/v2/joining-results?limit=1').then(r => r.json());
+                """,
+                "application/javascript"),
+            ["/api/results/latest"] = (404, "", "text/plain")
+        };
+        const string resultsJson = """
+            {
+              "results": [
+                {
+                  "resultEvaluation": "NOT_OK",
+                  "overallResultValues": [
+                    { "name": "Final Torque", "measuredValue": 0 },
+                    { "name": "Final Angle", "measuredValue": 1.5 }
+                  ]
+                }
+              ]
+            }
+            """;
+        handler["/api/v2/joining-results"] = (200, resultsJson, "application/json");
+        handler["/api/v2/joining-results?limit=1"] = (200, resultsJson, "application/json");
+
+        using var client = new SpinDashboardHttpClient(handler);
+        var read = await client.ReadLatestAsync("http://10.42.0.1:80", CancellationToken.None);
+
+        Assert.Equal(0, read.TorqueNm);
+        Assert.Equal(1.5, read.AngleDeg);
+        Assert.Contains("joining-results", read.Path, StringComparison.Ordinal);
+        Assert.Null(read.Error);
+    }
+
     private sealed class MapHandler : HttpMessageHandler
     {
         private readonly Dictionary<string, (int Status, string Body, string Type)> _responses =
@@ -62,8 +112,14 @@ public sealed class SpinDashboardHttpClientTests
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
-            if (!_responses.TryGetValue(path, out var mapped))
+            var uri = request.RequestUri;
+            var path = uri is null
+                ? string.Empty
+                : string.IsNullOrEmpty(uri.Query)
+                    ? uri.AbsolutePath
+                    : uri.PathAndQuery;
+            if (!_responses.TryGetValue(path, out var mapped)
+                && !_responses.TryGetValue(uri?.AbsolutePath ?? string.Empty, out mapped))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
                 {

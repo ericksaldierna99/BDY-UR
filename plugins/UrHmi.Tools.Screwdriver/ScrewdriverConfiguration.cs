@@ -18,7 +18,7 @@ public sealed record ScrewdriverConfiguration(
 
     public static readonly int[] DefaultOpcUaProbePorts = [4840, 4841, 48010, 49320, 62541];
 
-    public string OpcUaEndpoint => $"opc.tcp://{SpinBridgeIp}:{OpcUaPort}";
+    public string OpcUaEndpoint => OpcEndpointUrls.Canonical(SpinBridgeIp, OpcUaPort);
 
     public string HttpBase => $"http://{SpinBridgeIp}:{HttpPort}";
 

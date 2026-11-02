@@ -232,7 +232,29 @@ public sealed class SpinBridgeOpcUaClientTests
         Assert.Equal(1.5, reading.AngleDeg.Value);
         Assert.Contains("OPC UA", reading.Channel.LastError, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("HTTP", reading.Channel.LastError, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("4840 closed", reading.Channel.LastError, StringComparison.Ordinal);
+        Assert.Contains("opc.tcp://10.42.0.1:4840 closed", reading.Channel.LastError, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Connect_error_quotes_the_canonical_opc_tcp_uri()
+    {
+        var channel = new FakeOpcUaChannel
+        {
+            ConnectHandler = (_, _) => throw new UriFormatException(
+                "Invalid URI: The format of the URI could not be determined.")
+        };
+        var probe = new FakeOpcPortProbe { OpenPorts = { 4840 } };
+        using var client = new SpinBridgeOpcUaClient(TestConfig(), channel, portProbe: probe);
+        client.Start();
+
+        var reading = await WaitForAsync(client, value =>
+            value.Channel.Link == LinkState.Disconnected
+            && value.Channel.LastError is not null);
+
+        Assert.Equal("opc.tcp://10.42.0.1:4840", Assert.Single(channel.ConnectCalls));
+        Assert.Contains("opc.tcp://10.42.0.1:4840", reading.Channel.LastError, StringComparison.Ordinal);
+        Assert.Contains("Invalid URI", reading.Channel.LastError, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("OPC UA 10.42.0.1 ", reading.Channel.LastError, StringComparison.Ordinal);
     }
 
     [Fact]
