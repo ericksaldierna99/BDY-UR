@@ -106,6 +106,47 @@ public sealed class ScrewdriverProjectionTests
         Assert.DoesNotContain("99", snapshot.Torque.Text, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Connected_empty_latest_result_is_unavailable_not_comms_loss()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var spin = new SpinBridgeReading(
+            new ChannelHealth(SpinBridgeReading.ChannelId, LinkState.Connected, now, TimeSpan.Zero, null),
+            TimedValue<double>.Unavailable(),
+            TimedValue<double>.Unavailable());
+
+        var snapshot = ScrewdriverProjection.Project(PlcSnapshot.Empty(now), spin);
+
+        Assert.Equal(LinkState.Connected, spin.Channel.Link);
+        Assert.Equal(Freshness.Unavailable, snapshot.Torque.Freshness);
+        Assert.Equal(Freshness.Unavailable, snapshot.Angle.Freshness);
+        Assert.Equal("—", snapshot.Torque.Text);
+        Assert.Equal(IndicatorKind.Normal, snapshot.Torque.Kind);
+        Assert.Equal(IndicatorKind.Normal, snapshot.Angle.Kind);
+        Assert.NotEqual(IndicatorKind.CommsLoss, snapshot.Torque.Kind);
+        Assert.NotEqual(IndicatorKind.Fault, snapshot.Torque.Kind);
+    }
+
+    [Fact]
+    public void Disconnect_keeps_last_torque_as_stale_not_a_fault()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var spin = new SpinBridgeReading(
+            ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, "socket closed"),
+            new TimedValue<double>(1.5, now, Freshness.Stale),
+            new TimedValue<double>(20, now, Freshness.Stale));
+
+        var snapshot = ScrewdriverProjection.Project(PlcSnapshot.Empty(now), spin);
+
+        Assert.Equal("1.5 Nm", snapshot.Torque.Text);
+        Assert.Equal("20°", snapshot.Angle.Text);
+        Assert.Equal(Freshness.Stale, snapshot.Torque.Freshness);
+        Assert.Equal("dato no actualizado", snapshot.Torque.Caption);
+        Assert.Equal(IndicatorKind.Normal, snapshot.Torque.Kind);
+        Assert.NotEqual(IndicatorKind.Fault, snapshot.Torque.Kind);
+        Assert.NotEqual(IndicatorKind.Safety, snapshot.Torque.Kind);
+    }
+
     private static PlcSnapshot LivePlc(DateTimeOffset now, IReadOnlyDictionary<string, object?> values)
     {
         var tags = values.ToDictionary(

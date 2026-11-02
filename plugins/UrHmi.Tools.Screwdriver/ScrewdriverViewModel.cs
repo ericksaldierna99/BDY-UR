@@ -15,18 +15,23 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
     private readonly IToolHost _host;
     private readonly SynchronizationContext? _ui;
     private readonly IDisposable _plcSubscription;
+    private readonly IDisposable _spinSubscription;
     private PlcSnapshot _plc = PlcSnapshot.Empty(DateTimeOffset.UtcNow);
     private SpinBridgeReading _spinBridge = SpinBridgeReading.Unavailable();
     private int _disposed;
     private bool _faultAlarmRaised;
 
-    public ScrewdriverViewModel(IToolHost host, ScrewdriverConfiguration? configuration = null)
+    public ScrewdriverViewModel(
+        IToolHost host,
+        ScrewdriverConfiguration? configuration = null,
+        ISpinBridgeClient? spinBridge = null)
     {
         _host = host;
         _ui = SynchronizationContext.Current;
         Configuration = configuration ?? ScrewdriverConfiguration.CreateDefault();
         Apply(ScrewdriverProjection.Project(_plc, _spinBridge));
         _plcSubscription = host.Plc.Subscribe(new PlcObserver(this));
+        _spinSubscription = (spinBridge ?? NullSpinBridgeClient.Instance).Subscribe(new SpinObserver(this));
     }
 
     public ScrewdriverConfiguration Configuration { get; }
@@ -122,6 +127,7 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
         }
 
         _plcSubscription.Dispose();
+        _spinSubscription.Dispose();
     }
 
     [RelayCommand(CanExecute = nameof(CanActuate))]
@@ -261,5 +267,22 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
         }
 
         public void OnNext(PlcSnapshot value) => _owner.ApplyPlc(value);
+    }
+
+    private sealed class SpinObserver : IObserver<SpinBridgeReading>
+    {
+        private readonly ScrewdriverViewModel _owner;
+
+        public SpinObserver(ScrewdriverViewModel owner) => _owner = owner;
+
+        public void OnCompleted()
+        {
+        }
+
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnNext(SpinBridgeReading value) => _owner.ApplySpinBridge(value);
     }
 }

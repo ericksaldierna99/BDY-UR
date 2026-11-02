@@ -90,10 +90,7 @@ public static class ScrewdriverProjection
     {
         if (value.Freshness == Freshness.Unavailable || value.LastValidUtc is null)
         {
-            return Unavailable() with
-            {
-                Kind = value.Freshness == Freshness.Unavailable ? IndicatorKind.CommsLoss : IndicatorKind.Normal
-            };
+            return Unavailable();
         }
 
         var text = value.Value.ToString("0.##", CultureInfo.InvariantCulture) + suffix;

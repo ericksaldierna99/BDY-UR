@@ -25,7 +25,7 @@ public sealed class ScrewdriverToolModuleTests
     [Fact]
     public void CreateViewModel_returns_the_plugin_view_model()
     {
-        var module = new ScrewdriverToolModule();
+        var module = new ScrewdriverToolModule(_ => NullSpinBridgeClient.Instance);
 
         using var vm = Assert.IsType<ScrewdriverViewModel>(module.CreateViewModel(new FakeHost()));
 
@@ -66,6 +66,25 @@ internal sealed class FakeHost : IToolHost, IAlarmSink
     void IAlarmSink.Raise(AlarmRecord alarm) => Raised.Add(alarm);
 
     void IAlarmSink.Clear(string alarmId, DateTimeOffset clearedUtc) => Cleared.Add(alarmId);
+}
+
+internal sealed class FeedSpinBridgeClient : ISpinBridgeClient
+{
+    private readonly SnapshotFeed<SpinBridgeReading> _feed;
+
+    public FeedSpinBridgeClient(SnapshotFeed<SpinBridgeReading> feed) => _feed = feed;
+
+    public SpinBridgeReading Current => _feed.Current;
+
+    public void Start()
+    {
+    }
+
+    public void Dispose()
+    {
+    }
+
+    public IDisposable Subscribe(IObserver<SpinBridgeReading> observer) => _feed.Subscribe(observer);
 }
 
 internal sealed class SnapshotFeed<T> : IObservable<T>

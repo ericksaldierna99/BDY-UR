@@ -14,6 +14,7 @@ public sealed class ScrewdriverConfigStoreTests
         Assert.Equal(4840, configuration.OpcUaPort);
         Assert.Equal("opc.tcp://192.168.37.1:4840", configuration.OpcUaEndpoint);
         Assert.Equal("SDV35", configuration.ToolModel);
+        Assert.Equal(2000, configuration.StaleTimeoutMs);
         Assert.Empty(configuration.Validate());
     }
 

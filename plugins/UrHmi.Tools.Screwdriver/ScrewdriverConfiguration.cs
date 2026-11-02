@@ -5,17 +5,19 @@ namespace UrHmi.Tools.Screwdriver;
 public sealed record ScrewdriverConfiguration(
     string ToolModel,
     string SpinBridgeIp,
-    int OpcUaPort)
+    int OpcUaPort,
+    int StaleTimeoutMs)
 {
     public const string DefaultToolModel = "SDV35";
     public const string DefaultSpinBridgeIp = "192.168.37.1";
     public const int DefaultOpcUaPort = 4840;
+    public const int DefaultStaleTimeoutMs = 2000;
     public const string FileName = "screwdriver.json";
 
     public string OpcUaEndpoint => $"opc.tcp://{SpinBridgeIp}:{OpcUaPort}";
 
     public static ScrewdriverConfiguration CreateDefault() =>
-        new(DefaultToolModel, DefaultSpinBridgeIp, DefaultOpcUaPort);
+        new(DefaultToolModel, DefaultSpinBridgeIp, DefaultOpcUaPort, DefaultStaleTimeoutMs);
 
     public IReadOnlyList<string> Validate()
     {
@@ -33,6 +35,11 @@ public sealed record ScrewdriverConfiguration(
         if (OpcUaPort is < 1 or > 65535)
         {
             errors.Add("spinBridge.opcUaPort must be between 1 and 65535.");
+        }
+
+        if (StaleTimeoutMs <= 0)
+        {
+            errors.Add("spinBridge.staleTimeoutMs must be greater than 0.");
         }
 
         return errors;
