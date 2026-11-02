@@ -28,6 +28,21 @@ public static class SpinBridgeResultDecoder
         return pair;
     }
 
+    internal static string? DescribeFailure(object? latest, SpinBridgeMeasuredPair pair)
+    {
+        if (pair.TorqueNm is not null || pair.AngleDeg is not null)
+        {
+            return null;
+        }
+
+        return latest switch
+        {
+            byte[] bytes =>
+                $"LatestResult is {bytes.Length} undecoded bytes. JoiningResultDataType did not decode.",
+            _ => null
+        };
+    }
+
     private static SpinBridgeMeasuredPair Merge(SpinBridgeMeasuredPair left, SpinBridgeMeasuredPair right) =>
         new(left.TorqueNm ?? right.TorqueNm, left.AngleDeg ?? right.AngleDeg);
 
@@ -86,6 +101,8 @@ public static class SpinBridgeResultDecoder
 
         switch (value)
         {
+            case byte[]:
+                return;
             case string text:
                 Assign(text, null, ref torque, ref angle);
                 return;
@@ -114,16 +131,33 @@ public static class SpinBridgeResultDecoder
 
         if (value is IDictionary dictionary)
         {
+            string? dictName = null;
+            object? dictMeasured = null;
             foreach (DictionaryEntry entry in dictionary)
             {
-                Assign(Convert.ToString(entry.Key, CultureInfo.InvariantCulture), entry.Value, ref torque, ref angle);
+                var key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
+                if (key is not null && IsNameProperty(key))
+                {
+                    dictName = ReadName(entry.Value);
+                }
+                else if (key is not null && IsValueProperty(key))
+                {
+                    dictMeasured = entry.Value;
+                }
+
+                Assign(key, entry.Value, ref torque, ref angle);
                 Walk(entry.Value, ref torque, ref angle, visited, depth + 1);
+            }
+
+            if (!string.IsNullOrWhiteSpace(dictName))
+            {
+                Assign(dictName, dictMeasured ?? dictionary, ref torque, ref angle);
             }
 
             return;
         }
 
-        if (value is IEnumerable enumerable and not string)
+        if (value is IEnumerable enumerable and not string and not byte[])
         {
             foreach (var item in enumerable)
             {
@@ -241,7 +275,12 @@ public static class SpinBridgeResultDecoder
 
     private static void Assign(string? name, object? value, ref double? torque, ref double? angle)
     {
-        if (string.IsNullOrWhiteSpace(name) || !TryToDouble(value, out var number))
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        if (!TryToDouble(value, out var number) && !TryExtractMeasured(value, out number))
         {
             return;
         }
@@ -304,7 +343,56 @@ public static class SpinBridgeResultDecoder
         name is "Name" or "name" or "BrowseName" or "DisplayName" or "Text";
 
     private static bool IsValueProperty(string name) =>
-        name is "Value" or "value" or "MeasuredValue" or "measuredValue" or "ResultValue" or "Body";
+        name is "Value" or "value" or "MeasuredValue" or "measuredValue" or "ResultValue" or "Body"
+            or "Measured";
+
+    private static bool TryExtractMeasured(object? value, out double number)
+    {
+        number = 0;
+        if (value is null || IsScalar(value) || value is byte[])
+        {
+            return false;
+        }
+
+        if (value is IDictionary dictionary)
+        {
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                var key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
+                if (key is not null && IsValueProperty(key) && TryToDouble(entry.Value, out number))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        foreach (var property in value.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
+        {
+            if (property.GetIndexParameters().Length > 0 || !IsValueProperty(property.Name))
+            {
+                continue;
+            }
+
+            object? propertyValue;
+            try
+            {
+                propertyValue = property.GetValue(value);
+            }
+            catch (Exception)
+            {
+                continue;
+            }
+
+            if (TryToDouble(propertyValue, out number))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static bool IsScalar(object value) =>
         value is string || value.GetType().IsPrimitive || value is IFormattable and not IEnumerable;

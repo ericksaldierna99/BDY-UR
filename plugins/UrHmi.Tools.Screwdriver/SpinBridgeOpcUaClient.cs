@@ -18,6 +18,8 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
     private Task? _runLoop;
     private Task? _watchdogLoop;
     private string? _latestResultId;
+    private string? _resolveError;
+    private string? _lastError;
     private int _started;
     private int _disposed;
 
@@ -71,9 +73,10 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
     {
         if (!IpConfigured)
         {
+            _lastError = "spinBridge.ip is not set; OPC UA was not connected.";
             _aggregator.SetChannel(ChannelHealth.Disconnected(
                 SpinBridgeReading.ChannelId,
-                "spinBridge.ip is not set; OPC UA was not connected."));
+                _lastError));
             Publish();
             return;
         }
@@ -84,16 +87,18 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
             try
             {
                 _latestResultId = null;
+                _resolveError = null;
                 _aggregator.SetChannel(new ChannelHealth(
                     SpinBridgeReading.ChannelId,
                     attempt > 0 ? LinkState.Reconnecting : LinkState.Connecting,
                     null,
                     null,
-                    null));
+                    _lastError));
                 Publish();
 
                 await _channel.ConnectAsync(_configuration.OpcUaEndpoint, cancellationToken).ConfigureAwait(false);
                 attempt = 0;
+                _lastError = null;
                 _aggregator.SetChannel(new ChannelHealth(
                     SpinBridgeReading.ChannelId,
                     LinkState.Connected,
@@ -121,8 +126,9 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
             }
             catch (Exception ex)
             {
+                _lastError = ex.Message;
                 _aggregator.SetChannel(
-                    ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, ex.Message));
+                    ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
                 Publish();
                 try
                 {
@@ -160,29 +166,45 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         _latestResultId ??= await ResolveLatestResultAsync(ct).ConfigureAwait(false);
         if (_latestResultId is null)
         {
-            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, null, null);
+            _lastError = _resolveError
+                ?? "LatestResult was not found under TighteningSystem/ResultManagement/Results.";
+            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, null, null, _lastError);
             Publish();
             return;
         }
 
-        var pair = await ReadLatestAsync(_latestResultId, ct).ConfigureAwait(false);
-        _aggregator.ApplyPoll(DateTimeOffset.UtcNow, pair.TorqueNm, pair.AngleDeg);
+        var (pair, latest) = await ReadLatestAsync(_latestResultId, ct).ConfigureAwait(false);
+        var decodeError = SpinBridgeResultDecoder.DescribeFailure(latest, pair);
+        _lastError = decodeError;
+        _aggregator.ApplyPoll(DateTimeOffset.UtcNow, pair.TorqueNm, pair.AngleDeg, decodeError);
         Publish();
     }
 
     private async Task<string?> ResolveLatestResultAsync(CancellationToken cancellationToken)
     {
-        string?[] candidates =
+        (string Start, string[] Path, string Label)[] candidates =
         [
-            await WalkAsync(
+            (
+                SpinBridgeNodes.TighteningSystemAbsolute,
+                [SpinBridgeNodes.ResultManagementName, SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
+                "TighteningSystem (nsu)"
+            ),
+            (
                 SpinBridgeNodes.TighteningSystem,
                 [SpinBridgeNodes.ResultManagementName, SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
-                cancellationToken).ConfigureAwait(false),
-            await WalkAsync(
+                "TighteningSystem ns=1;i=5003"
+            ),
+            (
+                SpinBridgeNodes.ResultManagementAbsolute,
+                [SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
+                "ResultManagement (nsu)"
+            ),
+            (
                 SpinBridgeNodes.ResultManagement,
                 [SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
-                cancellationToken).ConfigureAwait(false),
-            await WalkAsync(
+                "ResultManagement ns=1;i=5011"
+            ),
+            (
                 SpinBridgeNodes.ObjectsFolder,
                 [
                     SpinBridgeNodes.TighteningSystemName,
@@ -190,10 +212,33 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                     SpinBridgeNodes.ResultsName,
                     SpinBridgeNodes.LatestResultName
                 ],
-                cancellationToken).ConfigureAwait(false)
+                "Objects i=85"
+            )
         ];
 
-        return candidates.FirstOrDefault(id => !string.IsNullOrWhiteSpace(id));
+        string? lastMiss = null;
+        foreach (var candidate in candidates)
+        {
+            try
+            {
+                var id = await WalkAsync(candidate.Start, candidate.Path, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(id))
+                {
+                    _resolveError = null;
+                    return id;
+                }
+
+                lastMiss = $"{candidate.Label} did not contain {string.Join('/', candidate.Path)}.";
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                lastMiss = $"{candidate.Label}: {ex.Message}";
+            }
+        }
+
+        _resolveError = lastMiss
+            ?? "LatestResult was not found under TighteningSystem/ResultManagement/Results.";
+        return null;
     }
 
     private async Task<string?> WalkAsync(
@@ -202,73 +247,71 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         CancellationToken cancellationToken)
     {
         var current = startNodeId;
-        try
+        foreach (var name in path)
         {
-            foreach (var name in path)
+            var children = await _channel.BrowseChildrenAsync(current, cancellationToken).ConfigureAwait(false);
+            var next = children.FirstOrDefault(child => NamesMatch(child, name));
+            if (next is null)
             {
-                var children = await _channel.BrowseChildrenAsync(current, cancellationToken).ConfigureAwait(false);
-                var next = children.FirstOrDefault(child => NamesMatch(child, name));
-                if (next is null)
-                {
-                    return null;
-                }
-
-                current = next.NodeId;
+                return null;
             }
 
-            return current;
+            current = next.NodeId;
+        }
+
+        return current;
+    }
+
+    private async Task<(SpinBridgeMeasuredPair Pair, object? Latest)> ReadLatestAsync(
+        string latestResultId,
+        CancellationToken cancellationToken)
+    {
+        // LatestResult is a Variable of JoiningResultDataType, not a folder. Always read it.
+        var latest = await _channel.ReadValueAsync(latestResultId, cancellationToken).ConfigureAwait(false);
+
+        Dictionary<string, object?>? fields = null;
+        object? overall = null;
+        try
+        {
+            var children = await _channel.BrowseChildrenAsync(latestResultId, cancellationToken)
+                .ConfigureAwait(false);
+            if (children.Count > 0)
+            {
+                fields = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                foreach (var child in children)
+                {
+                    object? value;
+                    try
+                    {
+                        value = await _channel.ReadValueAsync(child.NodeId, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        continue;
+                    }
+
+                    if (SpinBridgeResultDecoder.IsOverallName(child.BrowseName)
+                        || SpinBridgeResultDecoder.IsOverallName(child.DisplayName))
+                    {
+                        overall = value;
+                        continue;
+                    }
+
+                    fields[child.BrowseName] = value;
+                    if (!string.Equals(child.DisplayName, child.BrowseName, StringComparison.Ordinal))
+                    {
+                        fields[child.DisplayName] = value;
+                    }
+                }
+            }
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return null;
-        }
-    }
-
-    private async Task<SpinBridgeMeasuredPair> ReadLatestAsync(string latestResultId, CancellationToken cancellationToken)
-    {
-        var children = await _channel.BrowseChildrenAsync(latestResultId, cancellationToken).ConfigureAwait(false);
-        var fields = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-        object? overall = null;
-        foreach (var child in children)
-        {
-            object? value;
-            try
-            {
-                value = await _channel.ReadValueAsync(child.NodeId, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested)
-            {
-                continue;
-            }
-
-            if (SpinBridgeResultDecoder.IsOverallName(child.BrowseName)
-                || SpinBridgeResultDecoder.IsOverallName(child.DisplayName))
-            {
-                overall = value;
-                continue;
-            }
-
-            fields[child.BrowseName] = value;
-            if (!string.Equals(child.DisplayName, child.BrowseName, StringComparison.Ordinal))
-            {
-                fields[child.DisplayName] = value;
-            }
+            // Child browse is optional; the Variable value is the JoiningResult payload.
         }
 
-        object? latest = null;
-        if (fields.Count == 0 && overall is null)
-        {
-            try
-            {
-                latest = await _channel.ReadValueAsync(latestResultId, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested)
-            {
-                latest = null;
-            }
-        }
-
-        return SpinBridgeResultDecoder.Decode(fields, overall, latest);
+        return (SpinBridgeResultDecoder.Decode(fields, overall, latest), latest);
     }
 
     private async Task WatchdogAsync(CancellationToken cancellationToken)

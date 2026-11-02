@@ -19,6 +19,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\plugins\UrHmi.Tools.Screwdriver\UrHmi.Tools.Screwdriver.csproj" />

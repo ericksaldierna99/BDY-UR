@@ -108,6 +108,92 @@ public sealed class SpinBridgeOpcUaClientTests
     }
 
     [Fact]
+    public async Task LatestResult_variable_maps_joining_result_without_child_nodes()
+    {
+        const string latest = "ns=1;s=LatestResult";
+        var channel = BaseTree(latest);
+        channel.Map(latest);
+        channel.Values[latest] = new JoiningResult(
+        [
+            new ResultValue("Final Torque", 2.4),
+            new ResultValue("Final Angle", 30)
+        ]);
+
+        using var client = new SpinBridgeOpcUaClient(TestConfig(), channel);
+        client.Start();
+
+        var reading = await WaitForAsync(client, value => value.TorqueNm.Freshness == Freshness.Live);
+        Assert.Equal(2.4, reading.TorqueNm.Value);
+        Assert.Equal(30, reading.AngleDeg.Value);
+        Assert.Null(reading.Channel.LastError);
+    }
+
+    [Fact]
+    public async Task Unrelated_LatestResult_children_still_read_the_variable()
+    {
+        const string latest = "ns=1;s=LatestResult";
+        var channel = BaseTree(latest);
+        channel.Map(latest, FakeOpcUaChannel.Node("ns=1;s=Id", "resultId"));
+        channel.Values["ns=1;s=Id"] = "result-uuid";
+        channel.Values[latest] = new JoiningResult(
+        [
+            new ResultValue("Final Torque", 1.1),
+            new ResultValue("Final Angle", 9)
+        ]);
+
+        using var client = new SpinBridgeOpcUaClient(TestConfig(), channel);
+        client.Start();
+
+        var reading = await WaitForAsync(client, value => value.TorqueNm.Freshness == Freshness.Live);
+        Assert.Equal(1.1, reading.TorqueNm.Value);
+        Assert.Equal(9, reading.AngleDeg.Value);
+    }
+
+    [Fact]
+    public async Task Missing_LatestResult_stays_connected_and_logs_the_opc_error()
+    {
+        var channel = new FakeOpcUaChannel();
+        channel.Map(
+            SpinBridgeNodes.TighteningSystem,
+            FakeOpcUaChannel.Node(SpinBridgeNodes.ResultManagement, SpinBridgeNodes.ResultManagementName));
+        channel.Map(
+            SpinBridgeNodes.ResultManagement,
+            FakeOpcUaChannel.Node("ns=1;s=Results", SpinBridgeNodes.ResultsName));
+        channel.Map("ns=1;s=Results");
+        channel.Map(SpinBridgeNodes.ObjectsFolder);
+
+        using var client = new SpinBridgeOpcUaClient(TestConfig(), channel);
+        client.Start();
+
+        var reading = await WaitForAsync(client, value =>
+            value.Channel.Link == LinkState.Connected
+            && value.Channel.LastError is not null
+            && value.TorqueNm.Freshness == Freshness.Unavailable);
+
+        Assert.Contains("LatestResult", reading.Channel.LastError, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(Freshness.Unavailable, reading.AngleDeg.Freshness);
+    }
+
+    [Fact]
+    public async Task Undecoded_binary_LatestResult_logs_the_opc_error()
+    {
+        const string latest = "ns=1;s=LatestResult";
+        var channel = BaseTree(latest);
+        channel.Map(latest);
+        channel.Values[latest] = new byte[] { 0x01, 0x02, 0x03, 0x04 };
+
+        using var client = new SpinBridgeOpcUaClient(TestConfig(), channel);
+        client.Start();
+
+        var reading = await WaitForAsync(client, value =>
+            value.Channel.Link == LinkState.Connected
+            && value.Channel.LastError is not null);
+
+        Assert.Contains("undecoded", reading.Channel.LastError, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(Freshness.Unavailable, reading.TorqueNm.Freshness);
+    }
+
+    [Fact]
     public async Task Failed_connect_retries_the_configured_endpoint()
     {
         var channel = SpinTree(torque: 1, angle: 2);
@@ -139,9 +225,8 @@ public sealed class SpinBridgeOpcUaClientTests
     private static ScrewdriverConfiguration TestConfig(int staleTimeoutMs = 2000) =>
         new(ScrewdriverConfiguration.DefaultToolModel, ScrewdriverConfiguration.DefaultSpinBridgeIp, 4840, staleTimeoutMs);
 
-    private static FakeOpcUaChannel SpinTree(double? torque, double? angle)
+    private static FakeOpcUaChannel BaseTree(string latest)
     {
-        const string latest = "ns=1;s=LatestResult";
         var channel = new FakeOpcUaChannel();
         channel.Map(
             SpinBridgeNodes.TighteningSystem,
@@ -152,6 +237,13 @@ public sealed class SpinBridgeOpcUaClientTests
         channel.Map(
             "ns=1;s=Results",
             FakeOpcUaChannel.Node(latest, SpinBridgeNodes.LatestResultName));
+        return channel;
+    }
+
+    private static FakeOpcUaChannel SpinTree(double? torque, double? angle)
+    {
+        const string latest = "ns=1;s=LatestResult";
+        var channel = BaseTree(latest);
         channel.Map(
             latest,
             FakeOpcUaChannel.Node("ns=1;s=Overall", SpinBridgeNodes.OverallResultValuesName));
@@ -184,6 +276,26 @@ public sealed class SpinBridgeOpcUaClientTests
     }
 
     private sealed record NamedValue(string Name, object Value);
+
+    private sealed class JoiningResult
+    {
+        public JoiningResult(object[] overallResultValues) => this.overallResultValues = overallResultValues;
+
+        public object[] overallResultValues { get; }
+    }
+
+    private sealed class ResultValue
+    {
+        public ResultValue(string name, double measuredValue)
+        {
+            this.name = name;
+            this.measuredValue = measuredValue;
+        }
+
+        public string name { get; }
+
+        public double measuredValue { get; }
+    }
 
     private sealed class MatchObserver : IObserver<SpinBridgeReading>
     {

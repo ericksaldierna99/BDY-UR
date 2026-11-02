@@ -1,5 +1,6 @@
 using Opc.Ua;
 using Opc.Ua.Client;
+using Opc.Ua.Client.ComplexTypes;
 using Opc.Ua.Configuration;
 
 namespace UrHmi.Tools.Screwdriver;
@@ -17,6 +18,7 @@ public sealed class OpcUaChannel : IOpcUaChannel
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ITelemetryContext _telemetry = DefaultTelemetry.Create(static _ => { });
     private ISession? _session;
+    private ComplexTypeSystem? _complexTypes;
     private int _disposed;
 
     public bool IsConnected => _session?.Connected == true;
@@ -79,6 +81,8 @@ public sealed class OpcUaChannel : IOpcUaChannel
                     preferredLocales: [],
                     cancellationToken)
                 .ConfigureAwait(false);
+
+            await LoadComplexTypesAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -105,7 +109,7 @@ public sealed class OpcUaChannel : IOpcUaChannel
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         var session = RequireSession();
-        var references = await session.FetchReferencesAsync(NodeId.Parse(nodeId), cancellationToken)
+        var references = await session.FetchReferencesAsync(ParseNodeId(nodeId), cancellationToken)
             .ConfigureAwait(false);
 
         var children = new List<OpcBrowseNode>();
@@ -141,7 +145,7 @@ public sealed class OpcUaChannel : IOpcUaChannel
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         var session = RequireSession();
-        var value = await session.ReadValueAsync(NodeId.Parse(nodeId), cancellationToken).ConfigureAwait(false);
+        var value = await session.ReadValueAsync(ParseNodeId(nodeId), cancellationToken).ConfigureAwait(false);
         return Unwrap(value);
     }
 
@@ -160,12 +164,41 @@ public sealed class OpcUaChannel : IOpcUaChannel
     private ISession RequireSession() =>
         _session ?? throw new InvalidOperationException("OPC UA session is not connected.");
 
+    private NodeId ParseNodeId(string nodeId) => OpcNodeIds.Resolve(nodeId, RequireSession().NamespaceUris);
+
+    private async Task LoadComplexTypesAsync(CancellationToken cancellationToken)
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _complexTypes = ComplexTypeSystemClientExtensions.Create(_session, _telemetry);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(20));
+            await _complexTypes.LoadAsync(
+                    onlyEnumTypes: false,
+                    throwOnError: false,
+                    timeout.Token)
+                .ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // JoiningResultDataType may still arrive as binary; the client surfaces that as LastError.
+        }
+    }
+
     private async Task CloseSessionAsync()
     {
         var session = _session;
         _session = null;
+        var types = _complexTypes;
+        _complexTypes = null;
         if (session is null)
         {
+            types?.Dispose();
             return;
         }
 
@@ -182,10 +215,12 @@ public sealed class OpcUaChannel : IOpcUaChannel
         {
             disposable.Dispose();
         }
+
+        types?.Dispose();
     }
 
-    private static string FormatNodeId(ExpandedNodeId id) =>
-        id.IsNull ? string.Empty : id.ToString();
+    private string FormatNodeId(ExpandedNodeId id) =>
+        OpcNodeIds.Format(id, RequireSession().NamespaceUris);
 
 #pragma warning disable CS0618
     private static object? Unwrap(object? value)

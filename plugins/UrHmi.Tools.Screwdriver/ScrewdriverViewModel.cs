@@ -119,6 +119,12 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _commandStatus = "PLC writes wait for a live channel and process permission.";
 
+    [ObservableProperty]
+    private string _opcLinkText = "Disconnected";
+
+    [ObservableProperty]
+    private string _opcErrorText = "—";
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
@@ -205,6 +211,10 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
         EnabledText = snapshot.Enabled.Text;
         EnabledCaption = snapshot.Enabled.Caption;
         ActuationAvailable = snapshot.ActuationAvailable;
+        OpcLinkText = _spinBridge.Channel.Link.ToString();
+        OpcErrorText = string.IsNullOrWhiteSpace(_spinBridge.Channel.LastError)
+            ? "—"
+            : _spinBridge.Channel.LastError;
     }
 
     private void SyncFaultAlarm(ScrewdriverField fault)

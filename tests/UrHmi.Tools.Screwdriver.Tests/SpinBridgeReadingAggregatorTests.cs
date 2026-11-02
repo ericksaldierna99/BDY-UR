@@ -56,6 +56,20 @@ public sealed class SpinBridgeReadingAggregatorTests
     }
 
     [Fact]
+    public void Connected_poll_can_keep_last_error()
+    {
+        var aggregator = new SpinBridgeReadingAggregator();
+        var now = DateTimeOffset.Parse("2026-11-02T12:00:00Z");
+        aggregator.ApplyPoll(now, null, null, "LatestResult was not found");
+
+        var reading = aggregator.Build(now, Stale);
+
+        Assert.Equal(LinkState.Connected, reading.Channel.Link);
+        Assert.Equal("LatestResult was not found", reading.Channel.LastError);
+        Assert.Equal(Freshness.Unavailable, reading.TorqueNm.Freshness);
+    }
+
+    [Fact]
     public void Late_sample_on_an_open_session_is_stale_not_disconnected()
     {
         var aggregator = new SpinBridgeReadingAggregator();

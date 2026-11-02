@@ -86,6 +86,30 @@ public sealed class ScrewdriverViewModelTests
     }
 
     [Fact]
+    public void Last_opc_error_is_shown_on_the_view_model()
+    {
+        var feed = new SnapshotFeed<SpinBridgeReading>(SpinBridgeReading.Unavailable());
+        using var vm = new ScrewdriverViewModel(new FakeHost(), spinBridge: new FeedSpinBridgeClient(feed));
+        Assert.Equal("Disconnected", vm.OpcLinkText);
+        Assert.Equal("—", vm.OpcErrorText);
+
+        var now = DateTimeOffset.UtcNow;
+        feed.Publish(new SpinBridgeReading(
+            new ChannelHealth(
+                SpinBridgeReading.ChannelId,
+                LinkState.Connected,
+                now,
+                TimeSpan.Zero,
+                "LatestResult was not found"),
+            TimedValue<double>.Unavailable(),
+            TimedValue<double>.Unavailable()));
+
+        Assert.Equal("Connected", vm.OpcLinkText);
+        Assert.Equal("LatestResult was not found", vm.OpcErrorText);
+        Assert.Equal("sin dato", vm.TorqueCaption);
+    }
+
+    [Fact]
     public void Commands_are_disabled_when_the_plc_is_disconnected()
     {
         using var vm = new ScrewdriverViewModel(new FakeHost());

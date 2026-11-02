@@ -26,6 +26,16 @@
             <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding OpcUaEndpoint}" />
           </StackPanel>
         </Border>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="280">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="OPC UA link" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding OpcLinkText}" />
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Margin="0,8,0,0" Text="Last OPC UA error" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}"
+                       Text="{Binding OpcErrorText}"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
       </WrapPanel>
       <WrapPanel>
         <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">

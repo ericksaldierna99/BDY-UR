@@ -14,9 +14,14 @@ public sealed class SpinBridgeReadingAggregator
         _channel = health;
     }
 
-    public void ApplyPoll(DateTimeOffset now, double? torqueNm, double? angleDeg)
+    public void ApplyPoll(DateTimeOffset now, double? torqueNm, double? angleDeg, string? lastError = null)
     {
         _channel = _channel.WithRx(now, LinkState.Connected);
+        if (!string.IsNullOrWhiteSpace(lastError))
+        {
+            _channel = _channel.WithLink(LinkState.Connected, lastError);
+        }
+
         _torqueNm = torqueNm is { } torque
             ? TimedValue<double>.Live(torque, now)
             : TimedValue<double>.Unavailable();

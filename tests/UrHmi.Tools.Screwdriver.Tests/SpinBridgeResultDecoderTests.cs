@@ -69,6 +69,69 @@ public sealed class SpinBridgeResultDecoderTests
     }
 
     [Fact]
+    public void Joining_result_overall_values_named_final_torque_and_angle()
+    {
+        var latest = new JoiningResult(
+        [
+            new ResultValue("Final Torque", 2.4),
+            new ResultValue("Final Angle", 30)
+        ]);
+
+        var pair = SpinBridgeResultDecoder.Decode(latestResult: latest);
+
+        Assert.Equal(2.4, pair.TorqueNm);
+        Assert.Equal(30, pair.AngleDeg);
+        Assert.Null(SpinBridgeResultDecoder.DescribeFailure(latest, pair));
+    }
+
+    [Fact]
+    public void Nested_measured_value_objects_are_decoded()
+    {
+        var latest = new
+        {
+            overallResultValues = new object[]
+            {
+                new { name = "Final Torque", measuredValue = new { Value = 1.25 } },
+                new { name = "Final Angle", measuredValue = new { Value = 45d } }
+            }
+        };
+
+        var pair = SpinBridgeResultDecoder.Decode(latestResult: latest);
+
+        Assert.Equal(1.25, pair.TorqueNm);
+        Assert.Equal(45, pair.AngleDeg);
+    }
+
+    [Fact]
+    public void Dictionary_overall_entries_are_decoded()
+    {
+        var overall = new object[]
+        {
+            new Dictionary<string, object?> { ["name"] = "Final Torque", ["measuredValue"] = 2.4 },
+            new Dictionary<string, object?> { ["name"] = "Final Angle", ["measuredValue"] = 30 }
+        };
+
+        var pair = SpinBridgeResultDecoder.Decode(overallResultValues: overall);
+
+        Assert.Equal(2.4, pair.TorqueNm);
+        Assert.Equal(30, pair.AngleDeg);
+    }
+
+    [Fact]
+    public void Undecoded_bytes_describe_a_failure()
+    {
+        var latest = new byte[] { 1, 2, 3, 4 };
+        var pair = SpinBridgeResultDecoder.Decode(latestResult: latest);
+
+        Assert.Null(pair.TorqueNm);
+        Assert.Null(pair.AngleDeg);
+        Assert.Contains(
+            "undecoded",
+            SpinBridgeResultDecoder.DescribeFailure(latest, pair),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Torque_and_angle_names_are_recognized()
     {
         Assert.True(SpinBridgeResultDecoder.IsTorqueName("Final Torque (Nm)"));
@@ -79,4 +142,24 @@ public sealed class SpinBridgeResultDecoderTests
     }
 
     private sealed record NamedValue(string Name, object Value);
+
+    private sealed class JoiningResult
+    {
+        public JoiningResult(object[] overallResultValues) => this.overallResultValues = overallResultValues;
+
+        public object[] overallResultValues { get; }
+    }
+
+    private sealed class ResultValue
+    {
+        public ResultValue(string name, double measuredValue)
+        {
+            this.name = name;
+            this.measuredValue = measuredValue;
+        }
+
+        public string name { get; }
+
+        public double measuredValue { get; }
+    }
 }
