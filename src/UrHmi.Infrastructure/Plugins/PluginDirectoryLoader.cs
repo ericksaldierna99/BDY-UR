@@ -27,6 +27,7 @@ public sealed class PluginDirectoryLoader
         var modules = new List<IToolModule>();
         var views = new List<IToolViewFactory>();
         var failures = new List<PluginLoadFailure>();
+        var context = new PluginLoadContext(directory);
 
         foreach (var path in Directory.GetFiles(directory, "UrHmi.Tools.*.dll").OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
         {
@@ -38,7 +39,7 @@ public sealed class PluginDirectoryLoader
 
             try
             {
-                var assembly = LoadAssembly(path);
+                var assembly = context.LoadPlugin(path);
                 var exportedModules = 0;
                 var exportedViews = 0;
                 foreach (var type in assembly.GetExportedTypes())
@@ -86,20 +87,36 @@ public sealed class PluginDirectoryLoader
         return new PluginLoadResult(modules, views, failures);
     }
 
-    private static Assembly LoadAssembly(string path)
-    {
-        var context = new PluginLoadContext(path);
-        return context.LoadFromAssemblyPath(Path.GetFullPath(path));
-    }
-
+    /// <summary>
+    /// One load context for the whole plugins directory so a logic assembly and its
+    /// WPF view factory share the same <see cref="Type"/> instances. Separate ALCs
+    /// make DataTemplate keys miss and WPF fall back to the ViewModel type name.
+    /// </summary>
     private sealed class PluginLoadContext : AssemblyLoadContext
     {
-        private readonly AssemblyDependencyResolver _resolver;
+        private readonly string _directory;
+        private readonly List<AssemblyDependencyResolver> _resolvers = [];
 
-        public PluginLoadContext(string pluginPath)
-            : base(Path.GetFileNameWithoutExtension(pluginPath), isCollectible: false)
+        public PluginLoadContext(string directory)
+            : base("UrHmi.Tools", isCollectible: false)
         {
-            _resolver = new AssemblyDependencyResolver(pluginPath);
+            _directory = directory;
+        }
+
+        public Assembly LoadPlugin(string path)
+        {
+            var full = Path.GetFullPath(path);
+            _resolvers.Add(new AssemblyDependencyResolver(full));
+            var simpleName = Path.GetFileNameWithoutExtension(full);
+            foreach (var loaded in Assemblies)
+            {
+                if (string.Equals(loaded.GetName().Name, simpleName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return loaded;
+                }
+            }
+
+            return LoadFromAssemblyPath(full);
         }
 
         protected override Assembly? Load(AssemblyName assemblyName)
@@ -112,8 +129,47 @@ public sealed class PluginDirectoryLoader
                 }
             }
 
-            var resolved = _resolver.ResolveAssemblyToPath(assemblyName);
-            return resolved is null ? null : LoadFromAssemblyPath(resolved);
+            foreach (var loaded in Assemblies)
+            {
+                if (string.Equals(loaded.GetName().Name, assemblyName.Name, StringComparison.Ordinal))
+                {
+                    return loaded;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(assemblyName.Name))
+            {
+                var probe = Path.Combine(_directory, assemblyName.Name + ".dll");
+                if (File.Exists(probe))
+                {
+                    return LoadFromAssemblyPath(Path.GetFullPath(probe));
+                }
+            }
+
+            foreach (var resolver in _resolvers)
+            {
+                var resolved = resolver.ResolveAssemblyToPath(assemblyName);
+                if (resolved is not null)
+                {
+                    return LoadFromAssemblyPath(resolved);
+                }
+            }
+
+            return null;
+        }
+
+        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+        {
+            foreach (var resolver in _resolvers)
+            {
+                var native = resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+                if (native is not null)
+                {
+                    return LoadUnmanagedDllFromPath(native);
+                }
+            }
+
+            return IntPtr.Zero;
         }
     }
 }

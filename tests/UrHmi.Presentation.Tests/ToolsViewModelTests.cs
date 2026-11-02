@@ -23,6 +23,7 @@ public sealed class ToolsViewModelTests
         Assert.Empty(sut.Modules);
         Assert.Contains("plugins directory", sut.EmptyMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Null(sut.ActiveToolViewModel);
+        Assert.Null(sut.ActiveToolView);
     }
 
     [Fact]
@@ -37,6 +38,7 @@ public sealed class ToolsViewModelTests
 
         Assert.Equal("cell-tool", sut.SelectedModule?.Id);
         Assert.Equal("created", sut.ActiveToolViewModel);
+        Assert.Equal("created", sut.ActiveToolView);
         Assert.Equal("Cell tool", sut.FrameName);
         Assert.Equal("Enabled", sut.EnablementText);
         Assert.Equal(1, tool.CreateCalls);
@@ -59,6 +61,24 @@ public sealed class ToolsViewModelTests
             null));
 
         Assert.Equal(nameof(LinkState.Connected), sut.PlcLinkText);
+    }
+
+    [Fact]
+    public void View_factory_create_view_is_what_the_shell_hosts()
+    {
+        var tool = new FakeTool("cell-tool", "Cell tool");
+        var factory = new FakeViewFactory(typeof(string), "plugin-view");
+        var catalog = new ToolCatalog(
+            [tool],
+            new ToolsConfiguration("cell-tool", ["cell-tool"]),
+            [factory]);
+
+        using var sut = CreateViewModel(catalog);
+
+        Assert.Equal("created", sut.ActiveToolViewModel);
+        Assert.Equal("plugin-view", sut.ActiveToolView);
+        Assert.Equal(1, factory.CreateCalls);
+        Assert.Same(sut.ActiveToolViewModel, factory.LastViewModel);
     }
 
     private static ToolsViewModel CreateViewModel(IToolCatalog catalog, PublishingPlcTelemetry? plc = null)
@@ -93,6 +113,32 @@ public sealed class ToolsViewModelTests
         {
             CreateCalls++;
             return "created";
+        }
+    }
+
+    private sealed class FakeViewFactory : IToolViewFactory
+    {
+        private readonly object _view;
+
+        public FakeViewFactory(Type viewModelType, object view)
+        {
+            ViewModelType = viewModelType;
+            _view = view;
+        }
+
+        public Type ViewModelType { get; }
+
+        public Type ViewType => typeof(object);
+
+        public int CreateCalls { get; private set; }
+
+        public object? LastViewModel { get; private set; }
+
+        public object CreateView(object viewModel)
+        {
+            CreateCalls++;
+            LastViewModel = viewModel;
+            return _view;
         }
     }
 

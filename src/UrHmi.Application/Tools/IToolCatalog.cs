@@ -10,5 +10,7 @@ public interface IToolCatalog
 
     IToolModule? Selected { get; }
 
+    IReadOnlyList<IToolViewFactory> Views { get; }
+
     IToolModule? FindEnabled(string id);
 }

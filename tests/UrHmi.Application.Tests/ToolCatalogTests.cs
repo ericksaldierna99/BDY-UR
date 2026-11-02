@@ -43,6 +43,18 @@ public sealed class ToolCatalogTests
     }
 
     [Fact]
+    public void Views_are_kept_for_the_shell_to_resolve()
+    {
+        var factory = new FakeViewFactory();
+        var catalog = new ToolCatalog(
+            [new FakeTool("alpha", "Alpha")],
+            new ToolsConfiguration("alpha", ["alpha"]),
+            [factory]);
+
+        Assert.Same(factory, Assert.Single(catalog.Views));
+    }
+
+    [Fact]
     public void Catalog_does_not_depend_on_a_screwdriver_type()
     {
         var application = typeof(ToolCatalog).Assembly;
@@ -67,5 +79,14 @@ public sealed class ToolCatalogTests
         public IReadOnlyList<string> RequiredPlcTags => [];
 
         public object CreateViewModel(IToolHost host) => new object();
+    }
+
+    private sealed class FakeViewFactory : IToolViewFactory
+    {
+        public Type ViewModelType => typeof(object);
+
+        public Type ViewType => typeof(object);
+
+        public object CreateView(object viewModel) => viewModel;
     }
 }

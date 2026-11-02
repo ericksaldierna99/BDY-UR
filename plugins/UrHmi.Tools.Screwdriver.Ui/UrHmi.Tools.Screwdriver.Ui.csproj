@@ -22,6 +22,10 @@
       <_AppPluginsDir>$(MSBuildThisFileDirectory)..\..\src\UrHmi.App\bin\$(Configuration)\$(TargetFramework)\plugins\</_AppPluginsDir>
     </PropertyGroup>
     <MakeDir Directories="$(_AppPluginsDir)" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_AppPluginsDir)" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <_UiPluginCopy Include="$(TargetPath)" />
+      <_UiPluginCopy Include="$(TargetDir)$(TargetName).deps.json" Condition="Exists('$(TargetDir)$(TargetName).deps.json')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_UiPluginCopy)" DestinationFolder="$(_AppPluginsDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>

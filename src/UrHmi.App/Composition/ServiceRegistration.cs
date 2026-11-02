@@ -169,6 +169,6 @@ internal static class ServiceRegistration
         }
 
         ToolViewTemplateRegistrar.Register(loaded.Views);
-        return new ToolCatalog(loaded.Modules, configuration.Tools);
+        return new ToolCatalog(loaded.Modules, configuration.Tools, loaded.Views);
     }
 }

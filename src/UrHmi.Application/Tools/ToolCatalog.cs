@@ -5,12 +5,16 @@ namespace UrHmi.Application.Tools;
 
 public sealed class ToolCatalog : IToolCatalog
 {
-    public ToolCatalog(IReadOnlyList<IToolModule> discovered, ToolsConfiguration configuration)
+    public ToolCatalog(
+        IReadOnlyList<IToolModule> discovered,
+        ToolsConfiguration configuration,
+        IReadOnlyList<IToolViewFactory>? views = null)
     {
         ArgumentNullException.ThrowIfNull(discovered);
         ArgumentNullException.ThrowIfNull(configuration);
 
         Discovered = discovered;
+        Views = views ?? [];
         var enabledIds = new HashSet<string>(configuration.Enabled, StringComparer.Ordinal);
         Enabled = discovered
             .Where(module => enabledIds.Contains(module.Id))
@@ -23,6 +27,8 @@ public sealed class ToolCatalog : IToolCatalog
     public IReadOnlyList<IToolModule> Enabled { get; }
 
     public IToolModule? Selected { get; }
+
+    public IReadOnlyList<IToolViewFactory> Views { get; }
 
     public IToolModule? FindEnabled(string? id)
     {

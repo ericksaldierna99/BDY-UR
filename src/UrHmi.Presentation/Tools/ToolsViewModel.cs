@@ -64,6 +64,9 @@ public sealed partial class ToolsViewModel : ObservableObject, IDisposable
     private object? _activeToolViewModel;
 
     [ObservableProperty]
+    private object? _activeToolView;
+
+    [ObservableProperty]
     private string _frameName = "No tool selected";
 
     [ObservableProperty]
@@ -99,13 +102,16 @@ public sealed partial class ToolsViewModel : ObservableObject, IDisposable
             FrameName = "No tool selected";
             EnablementText = "Disabled";
             ActiveToolViewModel = null;
+            ActiveToolView = null;
             RefreshEmptyMessage();
             return;
         }
 
         try
         {
-            ActiveToolViewModel = value.Module.CreateViewModel(_host);
+            var viewModel = value.Module.CreateViewModel(_host);
+            ActiveToolViewModel = viewModel;
+            ActiveToolView = ResolveView(viewModel);
             FrameName = value.DisplayName;
             EnablementText = "Enabled";
             PersistSelection(value.Id);
@@ -116,6 +122,7 @@ public sealed partial class ToolsViewModel : ObservableObject, IDisposable
             FrameName = value.DisplayName;
             EnablementText = "Faulted";
             ActiveToolViewModel = null;
+            ActiveToolView = null;
         }
 
         RefreshEmptyMessage();
@@ -182,8 +189,34 @@ public sealed partial class ToolsViewModel : ObservableObject, IDisposable
         EmptyMessage = "Select a tool module.";
     }
 
+    private object ResolveView(object viewModel)
+    {
+        var factory = FindViewFactory(viewModel);
+        return factory is null ? viewModel : factory.CreateView(viewModel);
+    }
+
+    private IToolViewFactory? FindViewFactory(object viewModel)
+    {
+        var type = viewModel.GetType();
+        foreach (var factory in _catalog.Views)
+        {
+            if (factory.ViewModelType.IsInstanceOfType(viewModel)
+                || string.Equals(factory.ViewModelType.FullName, type.FullName, StringComparison.Ordinal))
+            {
+                return factory;
+            }
+        }
+
+        return null;
+    }
+
     private void DisposeActiveViewModel()
     {
+        if (!ReferenceEquals(ActiveToolView, ActiveToolViewModel) && ActiveToolView is IDisposable view)
+        {
+            view.Dispose();
+        }
+
         if (ActiveToolViewModel is IDisposable disposable)
         {
             disposable.Dispose();

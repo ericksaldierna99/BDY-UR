@@ -16,15 +16,26 @@ internal static class ToolViewTemplateRegistrar
 
         foreach (var factory in factories)
         {
-            var key = new DataTemplateKey(factory.ViewModelType);
-            if (application.Resources.Contains(key))
-            {
-                continue;
-            }
-
-            var visual = new FrameworkElementFactory(factory.ViewType);
-            var template = new DataTemplate(factory.ViewModelType) { VisualTree = visual };
-            application.Resources.Add(key, template);
+            Register(application.Resources, factory);
         }
+    }
+
+    internal static void Register(ResourceDictionary resources, IToolViewFactory factory)
+    {
+        ArgumentNullException.ThrowIfNull(resources);
+        ArgumentNullException.ThrowIfNull(factory);
+        var key = new DataTemplateKey(factory.ViewModelType);
+        if (resources.Contains(key))
+        {
+            return;
+        }
+
+        var visual = new FrameworkElementFactory(factory.ViewType);
+        var template = new DataTemplate(factory.ViewModelType)
+        {
+            VisualTree = visual,
+            DataType = factory.ViewModelType
+        };
+        resources.Add(key, template);
     }
 }
