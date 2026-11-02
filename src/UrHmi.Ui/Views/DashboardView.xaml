@@ -254,10 +254,20 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Button Grid.Column="1"
-                    Style="{DynamicResource JogBrakeButtonStyle}"
-                    Content="Brake release"
-                    Command="{Binding ReleaseBrakesCommand}" />
+            <StackPanel Grid.Column="1">
+              <Button Style="{DynamicResource JogBrakeButtonStyle}"
+                      Command="{Binding ReleaseBrakesCommand}">
+                <TextBlock Text="Brake release"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center" />
+              </Button>
+              <Button Style="{DynamicResource JogBrakeButtonStyle}"
+                      Command="{Binding EnableFreedriveCommand}">
+                <TextBlock Text="Enable freedrive"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center" />
+              </Button>
+            </StackPanel>
           </Grid>
         </DockPanel>
       </Border>
@@ -300,6 +310,25 @@
             <Button Style="{DynamicResource SettingButtonStyle}"
                     Content="Go to saved pose"
                     Command="{Binding GoToSavedPositionCommand}" />
+            <Grid Margin="0,0,8,0"
+                  MinWidth="120"
+                  IsEnabled="{Binding HasSelectedSavedPose}">
+              <Button Style="{DynamicResource SettingButtonStyle}"
+                      Margin="0"
+                      PreviewMouseLeftButtonDown="OnDeleteHoldDown"
+                      PreviewMouseLeftButtonUp="OnDeleteHoldUp"
+                      LostMouseCapture="OnDeleteHoldLost">
+                <StackPanel>
+                  <TextBlock Text="Delete" HorizontalAlignment="Center" />
+                  <TextBlock FontSize="11"
+                             Foreground="{DynamicResource Brush.Muted}"
+                             Text="Hold 4s"
+                             HorizontalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <ProgressBar Style="{DynamicResource JogDeleteProgressStyle}"
+                           Value="{Binding DeleteHoldProgress}" />
+            </Grid>
           </StackPanel>
         </DockPanel>
       </Border>

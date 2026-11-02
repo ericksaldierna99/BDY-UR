@@ -21,6 +21,8 @@ public static class UrScriptCommands
             $"movel(p{FormatList(pose.ToVector())}, a={acceleration:0.###}, v={speed:0.###})\n");
     }
 
+    public static string EnableFreedrive() => "freedrive_mode()\n";
+
     public static string FormatStored(SavedJogPose pose)
     {
         ArgumentNullException.ThrowIfNull(pose);

@@ -138,6 +138,53 @@ public sealed class RobotJogService : IRobotJogService
             : JogResult.Fail(result.Error ?? "Brake release failed.");
     }
 
+    public async Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (!IsLinked(snapshot))
+        {
+            return JogResult.Fail("Robot is disconnected. Freedrive was not sent.");
+        }
+
+        if (!_authorization.HasProcessChangePermission())
+        {
+            return JogResult.Fail("Permission is required to enable freedrive.");
+        }
+
+        try
+        {
+            await _urScript.SendAsync(UrScriptCommands.EnableFreedrive(), cancellationToken).ConfigureAwait(false);
+            return JogResult.Ok("Freedrive enabled.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "URScript freedrive_mode failed.");
+            return JogResult.Fail(ex.Message);
+        }
+    }
+
+    public async Task<JogResult> DeleteAsync(int slot, CancellationToken cancellationToken = default)
+    {
+        if (!TryGetSlot(slot, out var pose))
+        {
+            return JogResult.Fail("Position slot must be 1 to 10.");
+        }
+
+        if (!pose.HasPose)
+        {
+            return JogResult.Fail($"Position {slot} has no saved coordinates.");
+        }
+
+        var next = Replace(slot, new SavedJogPose(slot, null, null, null));
+        await _store.SaveAsync(next, cancellationToken).ConfigureAwait(false);
+        lock (_gate)
+        {
+            _slots = next;
+        }
+
+        return JogResult.Ok($"Position {slot} deleted.");
+    }
+
     public static bool IsLinked(RobotSnapshot snapshot) =>
         snapshot.Dashboard.Link == LinkState.Connected || snapshot.Rtde.Link == LinkState.Connected;
 

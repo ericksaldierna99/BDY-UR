@@ -30,6 +30,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly IUserPrompt _prompt;
     private readonly IDisposable _robotSubscription;
     private readonly IDisposable _plcSubscription;
+    private CancellationTokenSource? _deleteHoldCts;
     private int _disposed;
 
     public DashboardViewModel(
@@ -131,6 +132,8 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [NotifyCanExecuteChangedFor(nameof(SaveCurrentPositionCommand))]
     [NotifyCanExecuteChangedFor(nameof(GoToSavedPositionCommand))]
     [NotifyCanExecuteChangedFor(nameof(ReleaseBrakesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(EnableFreedriveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BeginDeleteHoldCommand))]
     private bool _isRobotConnected;
 
     [ObservableProperty]
@@ -155,7 +158,22 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [NotifyCanExecuteChangedFor(nameof(SaveCurrentPositionCommand))]
     [NotifyCanExecuteChangedFor(nameof(GoToSavedPositionCommand))]
     [NotifyCanExecuteChangedFor(nameof(ReleaseBrakesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(EnableFreedriveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BeginDeleteHoldCommand))]
     private bool _isJogBusy;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BeginDeleteHoldCommand))]
+    private bool _hasSelectedSavedPose;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BeginDeleteHoldCommand))]
+    private bool _isDeleteHolding;
+
+    [ObservableProperty]
+    private double _deleteHoldProgress;
+
+    public TimeSpan DeleteHoldDuration { get; set; } = TimeSpan.FromSeconds(4);
 
     public bool HasNoActiveAlarms => ActiveAlarmItems.Count == 0;
 
@@ -166,6 +184,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
+        CancelDeleteHold();
         _robotSubscription.Dispose();
         _plcSubscription.Dispose();
     }
@@ -200,6 +219,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void CloseRobotJog()
     {
+        CancelDeleteHold();
         IsSavePositionOpen = false;
         IsRobotJogOpen = false;
     }
@@ -212,6 +232,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
+        CancelDeleteHold();
         SelectedJogSlot = slot;
         SelectedJogTitle = $"Save position — Position {slot}";
         StoredCoordinatesText = UrScriptCommands.FormatStored(_jog.Slots[slot - 1]);
@@ -222,6 +243,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void CloseSavePosition()
     {
+        CancelDeleteHold();
         IsSavePositionOpen = false;
     }
 
@@ -230,6 +252,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     {
         if (IsSavePositionOpen)
         {
+            CancelDeleteHold();
             IsSavePositionOpen = false;
             return;
         }
@@ -294,7 +317,92 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         await RunJogAsync(() => _jog.ReleaseBrakesAsync(_robot.Current)).ConfigureAwait(false);
     }
 
+    [RelayCommand(CanExecute = nameof(CanRunJogAction))]
+    private async Task EnableFreedriveAsync()
+    {
+        if (!_prompt.Confirm("Enable freedrive", "Enable freedrive? The robot can then be moved by hand."))
+        {
+            return;
+        }
+
+        await RunJogAsync(() => _jog.EnableFreedriveAsync(_robot.Current)).ConfigureAwait(false);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanBeginDeleteHold))]
+    private async Task BeginDeleteHoldAsync()
+    {
+        if (!CanBeginDeleteHold())
+        {
+            return;
+        }
+
+        CancelDeleteHoldToken();
+        var cts = new CancellationTokenSource();
+        _deleteHoldCts = cts;
+        await _dispatcher.InvokeAsync(() =>
+        {
+            IsDeleteHolding = true;
+            DeleteHoldProgress = 0;
+        }).ConfigureAwait(false);
+
+        var started = Environment.TickCount64;
+        var durationMs = Math.Max(1, DeleteHoldDuration.TotalMilliseconds);
+        try
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                var elapsed = Environment.TickCount64 - started;
+                if (elapsed >= durationMs)
+                {
+                    break;
+                }
+
+                var progress = elapsed / durationMs;
+                await _dispatcher.InvokeAsync(() => DeleteHoldProgress = progress).ConfigureAwait(false);
+                var remaining = (int)Math.Min(50, durationMs - elapsed);
+                await Task.Delay(Math.Max(1, remaining), cts.Token).ConfigureAwait(false);
+            }
+
+            cts.Token.ThrowIfCancellationRequested();
+            var slot = SelectedJogSlot;
+            await RunJogAsync(() => _jog.DeleteAsync(slot)).ConfigureAwait(false);
+            await _dispatcher.InvokeAsync(() =>
+            {
+                StoredCoordinatesText = UrScriptCommands.FormatStored(_jog.Slots[slot - 1]);
+                RefreshJogCaptions();
+            }).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_deleteHoldCts, cts))
+            {
+                _deleteHoldCts = null;
+            }
+
+            cts.Dispose();
+            await _dispatcher.InvokeAsync(() =>
+            {
+                IsDeleteHolding = false;
+                DeleteHoldProgress = 0;
+            }).ConfigureAwait(false);
+        }
+    }
+
+    [RelayCommand]
+    private void CancelDeleteHold()
+    {
+        CancelDeleteHoldToken();
+        IsDeleteHolding = false;
+        DeleteHoldProgress = 0;
+    }
+
     private bool CanRunJogAction() => IsRobotConnected && !IsJogBusy;
+
+    private bool CanBeginDeleteHold() =>
+        IsRobotConnected && !IsJogBusy && HasSelectedSavedPose && !IsDeleteHolding;
 
     private async Task RunJogAsync(Func<Task<JogResult>> action)
     {
@@ -332,6 +440,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         IsRobotConnected = RobotJogService.IsLinked(robot);
         if (!IsRobotConnected && (IsRobotJogOpen || IsSavePositionOpen))
         {
+            CancelDeleteHold();
             IsSavePositionOpen = false;
             IsRobotJogOpen = false;
             JogStatusText = "Robot is disconnected.";
@@ -395,8 +504,16 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         {
             var pose = _jog.Slots[item.Slot - 1];
             item.Caption = pose.HasPose ? "saved" : "empty";
+            item.IsSaved = pose.HasPose;
         }
+
+        HasSelectedSavedPose = SelectedJogSlot is >= 1 and <= SavedJogPose.SlotCount
+            && _jog.Slots[SelectedJogSlot - 1].HasPose;
     }
+
+    partial void OnSelectedJogSlotChanged(int value) => RefreshJogCaptions();
+
+    private void CancelDeleteHoldToken() => _deleteHoldCts?.Cancel();
 
     private void OnUi(Action action)
     {

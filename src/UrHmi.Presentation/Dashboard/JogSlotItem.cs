@@ -15,4 +15,7 @@ public sealed partial class JogSlotItem : ObservableObject
 
     [ObservableProperty]
     private string _caption = "empty";
+
+    [ObservableProperty]
+    private bool _isSaved;
 }

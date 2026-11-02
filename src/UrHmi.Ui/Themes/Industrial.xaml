@@ -21,6 +21,7 @@
   <SolidColorBrush x:Key="Brush.Fault" Color="{StaticResource Color.Fault}" />
   <SolidColorBrush x:Key="Brush.Safety" Color="{StaticResource Color.Safety}" />
   <SolidColorBrush x:Key="Brush.CommsLoss" Color="{StaticResource Color.CommsLoss}" />
+  <SolidColorBrush x:Key="Brush.JogSaved" Color="#FF1F4A3A" />
 
   <Style x:Key="ShellWindowStyle" TargetType="Window">
     <Setter Property="Background" Value="{StaticResource Brush.Background}" />
@@ -214,15 +215,34 @@
     <Setter Property="Padding" Value="12,10" />
     <Setter Property="MinHeight" Value="52" />
     <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding IsSaved}" Value="True">
+        <Setter Property="Background" Value="{StaticResource Brush.JogSaved}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Normal}" />
+        <Setter Property="BorderThickness" Value="2" />
+      </DataTrigger>
+    </Style.Triggers>
   </Style>
 
   <Style x:Key="JogBrakeButtonStyle" TargetType="Button" BasedOn="{StaticResource SettingButtonStyle}">
     <Setter Property="Margin" Value="12,4,0,4" />
-    <Setter Property="Padding" Value="16,12" />
+    <Setter Property="Padding" Value="12,10" />
     <Setter Property="MinWidth" Value="140" />
-    <Setter Property="MinHeight" Value="200" />
+    <Setter Property="MinHeight" Value="92" />
     <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style x:Key="JogDeleteProgressStyle" TargetType="ProgressBar">
+    <Setter Property="Height" Value="4" />
+    <Setter Property="Minimum" Value="0" />
+    <Setter Property="Maximum" Value="1" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Fault}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
   </Style>
 </ResourceDictionary>
 

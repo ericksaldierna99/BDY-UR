@@ -13,4 +13,8 @@ public interface IRobotJogService
     Task<JogResult> GoToAsync(int slot, RobotSnapshot snapshot, CancellationToken cancellationToken = default);
 
     Task<JogResult> ReleaseBrakesAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default);
+
+    Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default);
+
+    Task<JogResult> DeleteAsync(int slot, CancellationToken cancellationToken = default);
 }

@@ -43,6 +43,45 @@ public sealed class DashboardJogThreadingTests
         Assert.Equal("Position 1 saved.", sut.JogStatusText);
         Assert.Contains("TCP", sut.StoredCoordinatesText, StringComparison.Ordinal);
         Assert.True(dispatcher.InvokeAsyncCalls >= 4);
+        Assert.True(sut.JogSlots[0].IsSaved);
+    }
+
+    [Fact]
+    public async Task Delete_hold_cancelled_before_duration_does_not_delete()
+    {
+        var dispatcher = new RecordingUiDispatcher { CheckAccessResult = true };
+        var jog = new ThreadPoolJogService();
+        using var sut = CreateViewModel(dispatcher, jog);
+        sut.DeleteHoldDuration = TimeSpan.FromSeconds(30);
+        await sut.SaveCurrentPositionCommand.ExecuteAsync(null);
+        sut.OpenSavePositionCommand.Execute(1);
+
+        var hold = sut.BeginDeleteHoldCommand.ExecuteAsync(null);
+        await Task.Delay(40);
+        sut.CancelDeleteHoldCommand.Execute(null);
+        await hold;
+
+        Assert.True(jog.Slots[0].HasPose);
+        Assert.False(sut.IsDeleteHolding);
+        Assert.Equal(0, sut.DeleteHoldProgress);
+    }
+
+    [Fact]
+    public async Task Delete_hold_for_full_duration_clears_the_saved_pose()
+    {
+        var dispatcher = new RecordingUiDispatcher { CheckAccessResult = true };
+        var jog = new ThreadPoolJogService();
+        using var sut = CreateViewModel(dispatcher, jog);
+        sut.DeleteHoldDuration = TimeSpan.FromMilliseconds(50);
+        await sut.SaveCurrentPositionCommand.ExecuteAsync(null);
+        sut.OpenSavePositionCommand.Execute(1);
+
+        await sut.BeginDeleteHoldCommand.ExecuteAsync(null);
+
+        Assert.False(jog.Slots[0].HasPose);
+        Assert.False(sut.JogSlots[0].IsSaved);
+        Assert.Equal("No coordinates saved.", sut.StoredCoordinatesText);
+        Assert.Contains("deleted", sut.JogStatusText, StringComparison.OrdinalIgnoreCase);
     }
 
     private static DashboardViewModel CreateViewModel(RecordingUiDispatcher dispatcher, ThreadPoolJogService jog)
@@ -77,7 +116,9 @@ public sealed class DashboardJogThreadingTests
     {
         public int InvokeAsyncCalls { get; private set; }
 
-        public bool CheckAccess() => false;
+        public bool CheckAccessResult { get; set; }
+
+        public bool CheckAccess() => CheckAccessResult;
 
         public void Post(Action action) => action();
 
@@ -120,6 +161,18 @@ public sealed class DashboardJogThreadingTests
             BrakeCalls++;
             return Task.Run(() => JogResult.Ok("Brake releasing."), cancellationToken);
         }
+
+        public Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default) =>
+            Task.Run(() => JogResult.Ok("Freedrive enabled."), cancellationToken);
+
+        public Task<JogResult> DeleteAsync(int slot, CancellationToken cancellationToken = default) =>
+            Task.Run(() =>
+            {
+                var copy = _slots.ToArray();
+                copy[slot - 1] = new SavedJogPose(slot, null, null, null);
+                _slots = copy;
+                return JogResult.Ok($"Position {slot} deleted.");
+            }, cancellationToken);
     }
 
     private sealed class AcceptingPrompt : IUserPrompt

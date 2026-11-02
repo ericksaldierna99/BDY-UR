@@ -26,6 +26,12 @@ public sealed class UrScriptCommandsTests
     }
 
     [Fact]
+    public void EnableFreedrive_is_urscript_freedrive_mode()
+    {
+        Assert.Equal("freedrive_mode()\n", UrScriptCommands.EnableFreedrive());
+    }
+
+    [Fact]
     public void FormatStored_empty_slot_has_no_coordinates()
     {
         var text = UrScriptCommands.FormatStored(new SavedJogPose(3, null, null, null));

@@ -156,11 +156,63 @@ public sealed class RobotJogServiceTests
 
         var go = await sut.GoToAsync(1, linked);
         var brake = await sut.ReleaseBrakesAsync(linked);
+        var freedrive = await sut.EnableFreedriveAsync(linked);
 
         Assert.False(go.Succeeded);
         Assert.False(brake.Succeeded);
+        Assert.False(freedrive.Succeeded);
         Assert.Empty(urScript.Sent);
         Assert.Equal(0, dashboard.BrakeCalls);
+    }
+
+    [Fact]
+    public async Task Freedrive_is_not_sent_when_disconnected()
+    {
+        var sut = CreateSut(out var urScript, out _, out _);
+
+        var result = await sut.EnableFreedriveAsync(Snapshot(LinkState.Disconnected, LinkState.Disconnected));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("disconnected", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(urScript.Sent);
+    }
+
+    [Fact]
+    public async Task Freedrive_sends_urscript_when_linked()
+    {
+        var sut = CreateSut(out var urScript, out _, out _);
+
+        var result = await sut.EnableFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("freedrive_mode()\n", Assert.Single(urScript.Sent));
+    }
+
+    [Fact]
+    public async Task Delete_clears_a_saved_slot()
+    {
+        var sut = CreateSut(out _, out var store, out _);
+        store.Poses = Occupied(4, LiveTcp(), LiveJoints());
+        await sut.ReloadAsync();
+
+        var result = await sut.DeleteAsync(4);
+
+        Assert.True(result.Succeeded);
+        Assert.False(store.Poses[3].HasPose);
+        Assert.False(sut.Slots[3].HasPose);
+        Assert.Equal(10, store.Poses.Count);
+    }
+
+    [Fact]
+    public async Task Delete_refuses_empty_slot()
+    {
+        var sut = CreateSut(out _, out var store, out _);
+
+        var result = await sut.DeleteAsync(2);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("no saved coordinates", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.All(store.Poses, pose => Assert.False(pose.HasPose));
     }
 
     private static RobotJogService CreateSut(
