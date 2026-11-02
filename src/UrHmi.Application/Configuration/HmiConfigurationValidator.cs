@@ -41,7 +41,22 @@ public sealed class HmiConfigurationValidator
             errors.Add("ui.theme is required.");
         }
 
+        ValidateTools(configuration.Tools, errors);
+
         return errors;
+    }
+
+    private static void ValidateTools(ToolsConfiguration tools, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(tools.SelectedId))
+        {
+            return;
+        }
+
+        if (!tools.Enabled.Contains(tools.SelectedId, StringComparer.Ordinal))
+        {
+            errors.Add("tools.selectedId must be included in tools.enabled.");
+        }
     }
 
     private static void ValidateOptionalIp(string ip, string path, List<string> errors)

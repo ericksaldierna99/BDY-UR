@@ -14,6 +14,8 @@ Dashboard Server (TCP 29999) and RTDE (TCP 30004, protocol v2) are wired for UR1
 
 Spec section 5.4 is unspecified and has no screen. Program play/stop is not implemented.
 
+Cell tooling lives in `plugins/`, not in Domain or Application. This repository includes `UrHmi.Tools.Screwdriver` (atornillado), loaded from the app `plugins/` directory when `tools.enabled` lists `screwdriver`. Core projects do not reference that assembly.
+
 Default `robot.ip` is `192.168.37.105` (lab UR12e). An empty IP does not open sockets.
 
 ## Build

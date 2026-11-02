@@ -23,5 +23,6 @@
     <ProjectReference Include="..\..\src\UrHmi.Presentation\UrHmi.Presentation.csproj" />
     <ProjectReference Include="..\..\src\UrHmi.Application\UrHmi.Application.csproj" />
     <ProjectReference Include="..\..\src\UrHmi.Domain\UrHmi.Domain.csproj" />
+    <ProjectReference Include="..\..\src\UrHmi.Tools.Abstractions\UrHmi.Tools.Abstractions.csproj" />
   </ItemGroup>
 </Project>

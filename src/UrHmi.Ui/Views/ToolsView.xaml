@@ -1,8 +1,57 @@
 <UserControl x:Class="UrHmi.Ui.Views.ToolsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <StackPanel Margin="16">
-    <TextBlock Style="{DynamicResource ModuleTitleStyle}" Text="{Binding Title}" />
-    <TextBlock Style="{DynamicResource BodyTextStyle}" Text="{Binding EmptyMessage}" />
-  </StackPanel>
+  <Grid Margin="16">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="220" />
+      <ColumnDefinition Width="16" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Top"
+                 Style="{DynamicResource ModuleTitleStyle}"
+                 Text="{Binding Title}" />
+      <ListBox ItemsSource="{Binding Modules}"
+               SelectedItem="{Binding SelectedModule}"
+               DisplayMemberPath="DisplayName"
+               Background="{DynamicResource Brush.Surface}"
+               Foreground="{DynamicResource Brush.Text}"
+               BorderThickness="0" />
+    </DockPanel>
+    <DockPanel Grid.Column="2">
+      <Border DockPanel.Dock="Top"
+              Style="{DynamicResource DeviceCardStyle}"
+              Margin="0,0,0,12">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <StackPanel>
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="Herramental" />
+            <TextBlock Style="{DynamicResource DeviceCardTitleStyle}" Text="{Binding FrameName}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1">
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="PLC connection" />
+            <TextBlock Style="{DynamicResource DeviceCardTitleStyle}" Text="{Binding PlcLinkText}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+            <TextBlock Style="{DynamicResource SettingLabelStyle}" Text="Module" />
+            <TextBlock Style="{DynamicResource DeviceCardTitleStyle}" Text="{Binding EnablementText}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+      <TextBlock DockPanel.Dock="Top"
+                 Style="{DynamicResource BodyTextStyle}"
+                 Margin="0,0,0,8"
+                 Foreground="{DynamicResource Brush.Fault}"
+                 Text="{Binding SelectionError}" />
+      <TextBlock DockPanel.Dock="Top"
+                 Style="{DynamicResource BodyTextStyle}"
+                 Margin="0,0,0,8"
+                 Text="{Binding EmptyMessage}" />
+      <ContentControl Content="{Binding ActiveToolViewModel}" />
+    </DockPanel>
+  </Grid>
 </UserControl>

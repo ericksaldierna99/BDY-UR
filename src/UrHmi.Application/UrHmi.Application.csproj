@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\UrHmi.Domain\UrHmi.Domain.csproj" />
+    <ProjectReference Include="..\UrHmi.Tools.Abstractions\UrHmi.Tools.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />

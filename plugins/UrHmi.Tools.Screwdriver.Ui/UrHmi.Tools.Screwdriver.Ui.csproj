@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>UrHmi.Tools.Screwdriver.Ui</RootNamespace>
+    <AssemblyName>UrHmi.Tools.Screwdriver.Ui</AssemblyName>
+    <Description>WPF view for the screwdriver tool module. Loaded as a plugin; not referenced by HMI core.</Description>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UrHmi.Tools.Screwdriver\UrHmi.Tools.Screwdriver.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\UrHmi.Tools.Abstractions\UrHmi.Tools.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <Target Name="CopyToAppPlugins" AfterTargets="Build">
+    <PropertyGroup>
+      <_AppPluginsDir>$(MSBuildThisFileDirectory)..\..\src\UrHmi.App\bin\$(Configuration)\$(TargetFramework)\plugins\</_AppPluginsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(_AppPluginsDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_AppPluginsDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

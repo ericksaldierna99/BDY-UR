@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>UrHmi.Tools.Screwdriver</RootNamespace>
+    <AssemblyName>UrHmi.Tools.Screwdriver</AssemblyName>
+    <Description>Cell-specific screwdriver (atornillado) tool module. Core projects must not reference this assembly.</Description>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\UrHmi.Tools.Abstractions\UrHmi.Tools.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\UrHmi.Domain\UrHmi.Domain.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <Target Name="CopyToAppPlugins" AfterTargets="Build">
+    <PropertyGroup>
+      <_AppPluginsDir>$(MSBuildThisFileDirectory)..\..\src\UrHmi.App\bin\$(Configuration)\$(TargetFramework)\plugins\</_AppPluginsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(_AppPluginsDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_AppPluginsDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

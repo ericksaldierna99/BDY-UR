@@ -49,6 +49,30 @@ public sealed class HmiConfigurationValidatorTests
     }
 
     [Fact]
+    public void Selected_tool_must_be_enabled()
+    {
+        var config = HmiConfiguration.CreateDefault() with
+        {
+            Tools = new ToolsConfiguration("alpha", ["other"])
+        };
+
+        var errors = _validator.Validate(config);
+
+        Assert.Contains(errors, e => e.Contains("tools.selectedId", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Selected_tool_in_enabled_list_is_valid()
+    {
+        var config = HmiConfiguration.CreateDefault() with
+        {
+            Tools = new ToolsConfiguration("cell-tool", ["cell-tool"])
+        };
+
+        Assert.Empty(_validator.Validate(config));
+    }
+
+    [Fact]
     public void Invalid_urscript_ports_are_rejected()
     {
         var config = HmiConfiguration.CreateDefault() with
