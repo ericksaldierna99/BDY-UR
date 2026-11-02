@@ -31,7 +31,7 @@ public sealed class ScrewdriverToolModuleTests
 
         Assert.Equal("Atornillado", vm.Title);
         Assert.Equal(ScrewdriverConfiguration.DefaultSpinBridgeIp, vm.SpinBridgeIp);
-        Assert.Equal("opc.tcp://192.168.37.1:4840", vm.OpcUaEndpoint);
+        Assert.Equal("opc.tcp://192.168.37.2:4840", vm.OpcUaEndpoint);
         Assert.Equal("—", vm.StatusText);
         Assert.Equal("sin dato", vm.StatusCaption);
         Assert.Contains("OPC UA", vm.MapNotice, StringComparison.Ordinal);

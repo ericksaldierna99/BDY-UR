@@ -24,7 +24,7 @@ public sealed class CoreIsolationTests
         var hmiJson = File.ReadAllText(Path.Combine(root, "src", "UrHmi.App", "hmi.json"));
         var domainConfig = File.ReadAllText(Path.Combine(root, "src", "UrHmi.Domain", "Configuration", "HmiConfiguration.cs"));
 
-        Assert.Contains("\"ip\": \"192.168.37.1\"", pluginJson, StringComparison.Ordinal);
+        Assert.Contains("\"ip\": \"192.168.37.2\"", pluginJson, StringComparison.Ordinal);
         Assert.Contains("opcUaPort", pluginJson, StringComparison.Ordinal);
         Assert.Contains("staleTimeoutMs", pluginJson, StringComparison.Ordinal);
         Assert.DoesNotContain("spinBridge", hmiJson, StringComparison.OrdinalIgnoreCase);

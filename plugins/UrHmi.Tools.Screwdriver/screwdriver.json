@@ -1,7 +1,7 @@
 {
   "toolModel": "SDV35",
   "spinBridge": {
-    "ip": "192.168.37.1",
+    "ip": "192.168.37.2",
     "opcUaPort": 4840,
     "staleTimeoutMs": 2000
   }

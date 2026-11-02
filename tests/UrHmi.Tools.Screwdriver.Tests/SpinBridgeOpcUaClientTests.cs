@@ -15,7 +15,7 @@ public sealed class SpinBridgeOpcUaClientTests
             value.Channel.Link == LinkState.Connected
             && value.TorqueNm.Freshness == Freshness.Live);
 
-        Assert.Equal("opc.tcp://192.168.37.1:4840", Assert.Single(channel.ConnectCalls));
+        Assert.Equal("opc.tcp://192.168.37.2:4840", Assert.Single(channel.ConnectCalls));
         Assert.Equal(2.4, reading.TorqueNm.Value);
         Assert.Equal(30, reading.AngleDeg.Value);
         Assert.Equal(Freshness.Live, reading.AngleDeg.Freshness);
@@ -216,7 +216,7 @@ public sealed class SpinBridgeOpcUaClientTests
         var reading = await WaitForAsync(client, value => value.TorqueNm.Freshness == Freshness.Live);
         Assert.True(attempts >= 2);
         Assert.Equal(1, reading.TorqueNm.Value);
-        Assert.All(channel.ConnectCalls, url => Assert.Equal("opc.tcp://192.168.37.1:4840", url));
+        Assert.All(channel.ConnectCalls, url => Assert.Equal("opc.tcp://192.168.37.2:4840", url));
     }
 
     private static bool IndicatorLive(SpinBridgeReading reading) =>
