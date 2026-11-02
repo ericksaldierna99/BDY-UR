@@ -4,12 +4,19 @@ namespace UrHmi.Infrastructure.Robot;
 
 internal static class DashboardProtocol
 {
+    /// <summary>PolyScope 5.x Dashboard Server command. Space-separated; not camelCase.</summary>
+    public const string BrakeReleaseCommand = "brake release";
+
+    /// <summary>PolyScope 5.x Dashboard Server command. Space-separated; not camelCase.</summary>
+    public const string UnlockProtectiveStopCommand = "unlock protective stop";
+
     public static bool IsWelcome(string line) =>
         line.StartsWith("Connected", StringComparison.OrdinalIgnoreCase);
 
     public static bool IsError(string line) =>
         line.StartsWith("Error", StringComparison.OrdinalIgnoreCase)
-        || line.StartsWith("Failed", StringComparison.OrdinalIgnoreCase);
+        || line.StartsWith("Failed", StringComparison.OrdinalIgnoreCase)
+        || line.StartsWith("could not understand", StringComparison.OrdinalIgnoreCase);
 
     public static DashboardCommandResult ParseNamed(string raw, string prefix)
     {

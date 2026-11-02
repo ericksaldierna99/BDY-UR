@@ -42,10 +42,15 @@ public sealed class DashboardProtocolTests
     {
         var ok = DashboardProtocol.ParseCommandAck("Brake releasing");
         var error = DashboardProtocol.ParseCommandAck("Error: Protective stop");
+        var unknown = DashboardProtocol.ParseCommandAck("could not understand 'brakeRelease'");
 
+        Assert.Equal("brake release", DashboardProtocol.BrakeReleaseCommand);
+        Assert.Equal("unlock protective stop", DashboardProtocol.UnlockProtectiveStopCommand);
         Assert.True(ok.Success);
         Assert.Equal("Brake releasing", ok.Value);
         Assert.False(error.Success);
         Assert.Contains("Protective stop", error.Error, StringComparison.Ordinal);
+        Assert.False(unknown.Success);
+        Assert.Contains("could not understand", unknown.Error, StringComparison.OrdinalIgnoreCase);
     }
 }

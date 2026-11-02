@@ -106,7 +106,7 @@ public sealed class TcpDashboardClient : IRobotDashboardClient
         SendAsync("PolyscopeVersion", raw => DashboardProtocol.ParseNamed(raw, "URSoftware"), cancellationToken);
 
     public Task<DashboardCommandResult> BrakeReleaseAsync(CancellationToken cancellationToken = default) =>
-        SendAsync("brakeRelease", DashboardProtocol.ParseCommandAck, cancellationToken);
+        SendAsync(DashboardProtocol.BrakeReleaseCommand, DashboardProtocol.ParseCommandAck, cancellationToken);
 
     public async ValueTask DisposeAsync()
     {

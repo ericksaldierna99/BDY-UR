@@ -23,5 +23,6 @@ public interface IRobotDashboardClient : IAsyncDisposable
 
     Task<DashboardCommandResult> GetPolyscopeVersionAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>PolyScope 5.x Dashboard <c>brake release</c> (space-separated).</summary>
     Task<DashboardCommandResult> BrakeReleaseAsync(CancellationToken cancellationToken = default);
 }

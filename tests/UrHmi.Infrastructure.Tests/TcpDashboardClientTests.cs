@@ -56,8 +56,10 @@ public sealed class TcpDashboardClientTests
                 "programState" => "PLAYING default.urp\n",
                 "running" => "Program running: true\n",
                 "PolyscopeVersion" => "URSoftware 5.25.2\n",
-                "brakeRelease" => "Brake releasing\n",
-                _ => "Error: Unknown command\n"
+                "brake release" => "Brake releasing\n",
+                "unlock protective stop" => "Protective stop releasing\n",
+                "brakeRelease" => "could not understand 'brakeRelease'\n",
+                _ => "could not understand '" + line + "'\n"
             };
             await stream.WriteAsync(Encoding.ASCII.GetBytes(reply));
         }
