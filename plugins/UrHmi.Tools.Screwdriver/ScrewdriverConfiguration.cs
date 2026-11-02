@@ -9,7 +9,7 @@ public sealed record ScrewdriverConfiguration(
     int StaleTimeoutMs)
 {
     public const string DefaultToolModel = "SDV35";
-    public const string DefaultSpinBridgeIp = "192.168.37.2";
+    public const string DefaultSpinBridgeIp = "10.42.0.1";
     public const int DefaultOpcUaPort = 4840;
     public const int DefaultStaleTimeoutMs = 2000;
     public const string FileName = "screwdriver.json";

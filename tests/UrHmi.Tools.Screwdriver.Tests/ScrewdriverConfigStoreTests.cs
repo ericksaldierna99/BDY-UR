@@ -10,9 +10,9 @@ public sealed class ScrewdriverConfigStoreTests
     {
         var configuration = ScrewdriverConfiguration.CreateDefault();
 
-        Assert.Equal("192.168.37.2", configuration.SpinBridgeIp);
+        Assert.Equal("10.42.0.1", configuration.SpinBridgeIp);
         Assert.Equal(4840, configuration.OpcUaPort);
-        Assert.Equal("opc.tcp://192.168.37.2:4840", configuration.OpcUaEndpoint);
+        Assert.Equal("opc.tcp://10.42.0.1:4840", configuration.OpcUaEndpoint);
         Assert.Equal("SDV35", configuration.ToolModel);
         Assert.Equal(2000, configuration.StaleTimeoutMs);
         Assert.Empty(configuration.Validate());
@@ -30,8 +30,8 @@ public sealed class ScrewdriverConfigStoreTests
             var loaded = ScrewdriverConfigStore.LoadOrCreate(directory);
             var json = File.ReadAllText(path);
 
-            Assert.Equal("192.168.37.2", loaded.SpinBridgeIp);
-            Assert.Equal("opc.tcp://192.168.37.2:4840", loaded.OpcUaEndpoint);
+            Assert.Equal("10.42.0.1", loaded.SpinBridgeIp);
+            Assert.Equal("opc.tcp://10.42.0.1:4840", loaded.OpcUaEndpoint);
             Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("secret", json, StringComparison.OrdinalIgnoreCase);
             using var document = JsonDocument.Parse(json);
@@ -73,7 +73,7 @@ public sealed class ScrewdriverConfigStoreTests
         {
             Assert.Throws<InvalidOperationException>(() =>
             {
-                var json = """{"toolModel":"SDV35","password":"x","spinBridge":{"ip":"192.168.37.2","opcUaPort":4840}}""";
+                var json = """{"toolModel":"SDV35","password":"x","spinBridge":{"ip":"10.42.0.1","opcUaPort":4840}}""";
                 using var document = JsonDocument.Parse(json);
                 if (ScrewdriverConfigStore.ContainsSensitiveProperty(document.RootElement, out var name))
                 {
