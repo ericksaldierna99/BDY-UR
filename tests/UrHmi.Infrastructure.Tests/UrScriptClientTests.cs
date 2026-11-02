@@ -84,6 +84,10 @@ public sealed class UrScriptClientTests
         Assert.Contains("start_freedrive()", payload, StringComparison.Ordinal);
         var remoteClosed = tcp.Client.Poll(50_000, SelectMode.SelectRead) && tcp.Client.Available == 0;
         Assert.False(remoteClosed);
+
+        client.CloseProgram();
+        var closedAfter = tcp.Client.Poll(200_000, SelectMode.SelectRead) && tcp.Client.Available == 0;
+        Assert.True(closedAfter);
     }
 
     private static HmiConfiguration Config(string ip, int port, int fallback) =>

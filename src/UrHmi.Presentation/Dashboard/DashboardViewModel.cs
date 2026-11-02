@@ -185,6 +185,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         }
 
         CancelDeleteHold();
+        _jog.StopFreedrive();
         _robotSubscription.Dispose();
         _plcSubscription.Dispose();
     }
@@ -217,11 +218,16 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void CloseRobotJog()
+    private async Task CloseRobotJogAsync()
     {
         CancelDeleteHold();
-        IsSavePositionOpen = false;
-        IsRobotJogOpen = false;
+        await _dispatcher.InvokeAsync(() => IsSavePositionOpen = false).ConfigureAwait(false);
+        var result = await _jog.EndFreedriveAsync(_robot.Current).ConfigureAwait(false);
+        await _dispatcher.InvokeAsync(() =>
+        {
+            IsRobotJogOpen = false;
+            JogStatusText = result.Message;
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(IsRobotConnected))]
@@ -447,6 +453,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         if (!IsRobotConnected && (IsRobotJogOpen || IsSavePositionOpen))
         {
             CancelDeleteHold();
+            _jog.StopFreedrive();
             IsSavePositionOpen = false;
             IsRobotJogOpen = false;
             JogStatusText = "Robot is disconnected.";

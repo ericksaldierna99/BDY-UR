@@ -28,6 +28,8 @@ public sealed class UrScriptClient : IUrScriptClient, IDisposable
     public Task SendProgramAsync(string script, CancellationToken cancellationToken = default) =>
         SendCoreAsync(script, primaryFirst: true, keepOpen: true, cancellationToken);
 
+    public void CloseProgram() => ReleaseProgramClient();
+
     public void Dispose() => ReleaseProgramClient();
 
     private async Task SendCoreAsync(string script, bool primaryFirst, bool keepOpen, CancellationToken cancellationToken)
@@ -44,7 +46,10 @@ public sealed class UrScriptClient : IUrScriptClient, IDisposable
         var primary = _configuration.Robot.UrScript.FallbackPort;
         var ports = (primaryFirst ? new[] { primary, secondary } : new[] { secondary, primary }).Distinct();
 
-        ReleaseProgramClient();
+        if (keepOpen)
+        {
+            ReleaseProgramClient();
+        }
 
         Exception? last = null;
         foreach (var port in ports)

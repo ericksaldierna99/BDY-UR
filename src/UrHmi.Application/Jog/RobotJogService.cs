@@ -248,6 +248,27 @@ public sealed class RobotJogService : IRobotJogService
         }
     }
 
+    public async Task<JogResult> EndFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (IsLinked(snapshot))
+        {
+            try
+            {
+                await _urScript.SendAsync(UrScriptCommands.DisableFreedrive(), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "URScript end_freedrive_mode failed; closing the program socket.");
+            }
+        }
+
+        StopFreedrive();
+        return JogResult.Ok("Freedrive ended.");
+    }
+
+    public void StopFreedrive() => _urScript.CloseProgram();
+
     public async Task<JogResult> DeleteAsync(int slot, CancellationToken cancellationToken = default)
     {
         if (!TryGetSlot(slot, out var pose))

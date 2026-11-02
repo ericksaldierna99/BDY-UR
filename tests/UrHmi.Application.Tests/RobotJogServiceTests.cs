@@ -215,10 +215,14 @@ public sealed class RobotJogServiceTests
         var init = await sut.InitializeAsync(linked);
         var freedrive = await sut.EnableFreedriveAsync(linked);
 
+        var end = await sut.EndFreedriveAsync(linked);
+
         Assert.False(go.Succeeded);
         Assert.False(init.Succeeded);
         Assert.False(freedrive.Succeeded);
-        Assert.Empty(urScript.Sent);
+        Assert.True(end.Succeeded);
+        Assert.Contains("end_freedrive_mode()", urScript.Sent[0], StringComparison.Ordinal);
+        Assert.Equal(1, urScript.CloseCalls);
         Assert.Empty(dashboard.Commands);
     }
 
@@ -263,6 +267,35 @@ public sealed class RobotJogServiceTests
         Assert.False(result.Succeeded);
         Assert.Contains("Initialize robot", result.Message, StringComparison.Ordinal);
         Assert.Empty(urScript.Programs);
+    }
+
+    [Fact]
+    public async Task End_freedrive_sends_end_mode_then_closes_the_program_socket()
+    {
+        var sut = CreateSut(out var urScript, out _, out var dashboard);
+        dashboard.Remote = "true";
+        dashboard.Modes.Enqueue("RUNNING");
+        await sut.EnableFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+
+        var result = await sut.EndFreedriveAsync(Snapshot(LinkState.Connected, LinkState.Disconnected));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Freedrive ended.", result.Message);
+        Assert.Contains("end_freedrive_mode()", Assert.Single(urScript.Sent), StringComparison.Ordinal);
+        Assert.Equal(1, urScript.CloseCalls);
+        Assert.Single(urScript.Programs);
+    }
+
+    [Fact]
+    public async Task End_freedrive_closes_the_socket_when_disconnected_without_sending()
+    {
+        var sut = CreateSut(out var urScript, out _, out _);
+
+        var result = await sut.EndFreedriveAsync(Snapshot(LinkState.Disconnected, LinkState.Disconnected));
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(urScript.Sent);
+        Assert.Equal(1, urScript.CloseCalls);
     }
 
     [Fact]
@@ -369,6 +402,8 @@ public sealed class RobotJogServiceTests
 
         public List<string> Programs { get; } = [];
 
+        public int CloseCalls { get; private set; }
+
         public Task SendAsync(string script, CancellationToken cancellationToken = default)
         {
             Sent.Add(script);
@@ -380,6 +415,8 @@ public sealed class RobotJogServiceTests
             Programs.Add(script);
             return Task.CompletedTask;
         }
+
+        public void CloseProgram() => CloseCalls++;
     }
 
     private sealed class FakeDashboard : IRobotDashboardClient

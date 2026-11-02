@@ -19,5 +19,14 @@ public interface IRobotJogService
 
     Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Send <c>end_freedrive_mode()</c> when linked, then close the held URScript program socket.
+    /// Always closes the socket. Does not require permission.
+    /// </summary>
+    Task<JogResult> EndFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default);
+
+    /// <summary>Close the held URScript program socket without sending.</summary>
+    void StopFreedrive();
+
     Task<JogResult> DeleteAsync(int slot, CancellationToken cancellationToken = default);
 }

@@ -12,4 +12,9 @@ public interface IUrScriptClient
     /// </summary>
     Task SendProgramAsync(string script, CancellationToken cancellationToken = default) =>
         SendAsync(script, cancellationToken);
+
+    /// <summary>
+    /// Drop a held primary/secondary program socket (e.g. the looping freedrive program on 30001).
+    /// </summary>
+    void CloseProgram();
 }

@@ -34,6 +34,8 @@ public static class UrScriptCommands
         "end\n" +
         "start_freedrive()\n";
 
+    public static string DisableFreedrive() => "end_freedrive_mode()\n";
+
     public static string FormatStored(SavedJogPose pose)
     {
         ArgumentNullException.ThrowIfNull(pose);

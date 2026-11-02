@@ -30,6 +30,22 @@ public sealed class DashboardJogThreadingTests
     }
 
     [Fact]
+    public async Task Close_jog_ends_freedrive_and_marshals_back_to_the_dispatcher()
+    {
+        var dispatcher = new RecordingUiDispatcher();
+        var jog = new ThreadPoolJogService();
+        using var sut = CreateViewModel(dispatcher, jog);
+        sut.OpenRobotJogCommand.Execute(null);
+
+        await sut.CloseRobotJogCommand.ExecuteAsync(null);
+
+        Assert.False(sut.IsRobotJogOpen);
+        Assert.Equal("Freedrive ended.", sut.JogStatusText);
+        Assert.Equal(1, jog.EndFreedriveCalls);
+        Assert.True(dispatcher.InvokeAsyncCalls >= 2);
+    }
+
+    [Fact]
     public async Task Save_position_marshals_stored_coordinates_after_background_io()
     {
         var dispatcher = new RecordingUiDispatcher();
@@ -140,6 +156,8 @@ public sealed class DashboardJogThreadingTests
 
         public int InitCalls { get; private set; }
 
+        public int EndFreedriveCalls { get; private set; }
+
         public IReadOnlyList<SavedJogPose> Slots => _slots;
 
         public Task ReloadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -168,6 +186,16 @@ public sealed class DashboardJogThreadingTests
 
         public Task<JogResult> EnableFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default) =>
             Task.Run(() => JogResult.Ok("Freedrive enabled."), cancellationToken);
+
+        public Task<JogResult> EndFreedriveAsync(RobotSnapshot snapshot, CancellationToken cancellationToken = default)
+        {
+            EndFreedriveCalls++;
+            return Task.Run(() => JogResult.Ok("Freedrive ended."), cancellationToken);
+        }
+
+        public void StopFreedrive()
+        {
+        }
 
         public Task<JogResult> DeleteAsync(int slot, CancellationToken cancellationToken = default) =>
             Task.Run(() =>
