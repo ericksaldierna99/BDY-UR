@@ -24,13 +24,13 @@ internal static class OpcNodeIds
             throw new InvalidOperationException($"Cannot parse OPC UA node id '{text}'.");
         }
 
-        var local = ExpandedNodeId.ToNodeId(expanded, namespaces, true);
-        if (local.IsNull)
+        var local = ExpandedNodeId.ToNodeId(expanded, namespaces, false);
+        if (!local.IsNull)
         {
-            throw new InvalidOperationException($"Cannot resolve OPC UA node id '{text}'.");
+            return local;
         }
 
-        return local;
+        throw new InvalidOperationException($"Cannot resolve OPC UA node id '{text}'.");
     }
 
     public static string Format(ExpandedNodeId id, NamespaceTable namespaces)
@@ -41,7 +41,13 @@ internal static class OpcNodeIds
         }
 
         ArgumentNullException.ThrowIfNull(namespaces);
-        var local = ExpandedNodeId.ToNodeId(id, namespaces, true);
-        return local.IsNull ? string.Empty : local.ToString();
+        var local = ExpandedNodeId.ToNodeId(id, namespaces, false);
+        if (!local.IsNull)
+        {
+            return local.ToString();
+        }
+
+        // Keep nsu=… so a later Resolve can localize once the namespace table is complete.
+        return id.ToString();
     }
 }

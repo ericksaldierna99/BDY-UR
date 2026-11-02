@@ -168,6 +168,10 @@ public sealed class SpinBridgeResultDecoderTests
             "undecoded",
             SpinBridgeResultDecoder.DescribeFailure(latest, pair),
             StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            "Final Torque",
+            SpinBridgeResultDecoder.DescribeFailure(new object(), pair) ?? string.Empty,
+            StringComparison.Ordinal);
     }
 
     [Fact]

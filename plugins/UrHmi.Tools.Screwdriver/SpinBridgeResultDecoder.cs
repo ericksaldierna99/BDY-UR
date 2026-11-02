@@ -39,7 +39,8 @@ public static class SpinBridgeResultDecoder
         {
             byte[] bytes =>
                 $"LatestResult is {bytes.Length} undecoded bytes. JoiningResultDataType did not decode.",
-            _ => null
+            null => "LatestResult value is empty.",
+            _ => "LatestResult did not contain Final Torque/Angle."
         };
     }
 

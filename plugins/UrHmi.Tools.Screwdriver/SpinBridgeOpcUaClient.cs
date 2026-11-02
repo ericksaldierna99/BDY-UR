@@ -141,18 +141,27 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                     }
                 }
 
-                var hasOpcValues = false;
                 if (_channel.IsConnected)
                 {
                     attempt = 0;
-                    await PollAsync(cancellationToken).ConfigureAwait(false);
-                    hasOpcValues = HasLiveValues();
+                    try
+                    {
+                        await PollAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        _lastOpcError = "OPC UA LatestResult read timed out.";
+                        _lastError = _lastOpcError;
+                        _aggregator.ApplyPoll(DateTimeOffset.UtcNow, null, null, _lastError);
+                        Publish();
+                    }
+
+                    // HTTP is fallback only when the OPC session is down.
+                    await Task.Delay(_pollInterval, cancellationToken).ConfigureAwait(false);
+                    continue;
                 }
 
-                if (!hasOpcValues)
-                {
-                    await PollHttpAsync(cancellationToken).ConfigureAwait(false);
-                }
+                await PollHttpAsync(cancellationToken).ConfigureAwait(false);
 
                 if (!cancellationToken.IsCancellationRequested && !_channel.IsConnected && !HasLiveValues())
                 {
@@ -287,7 +296,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
 
     private async Task PollHttpAsync(CancellationToken cancellationToken)
     {
-        if (_http is null)
+        if (_http is null || _channel.IsConnected)
         {
             return;
         }
@@ -300,13 +309,9 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         catch (Exception ex) when (ex is not OperationCanceledException
             || !cancellationToken.IsCancellationRequested)
         {
-            _lastError = CombineErrors(_lastOpcError, ex.Message);
-            if (!_channel.IsConnected)
-            {
-                _aggregator.SetChannel(
-                    ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
-            }
-
+            _lastError = CombineErrors(_lastOpcError, ShortHttpError(ex.Message));
+            _aggregator.SetChannel(
+                ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
             Publish();
             return;
         }
@@ -317,24 +322,16 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                 ? _configuration.HttpBase
                 : _configuration.HttpBase + read.Path;
             _lastError = string.IsNullOrWhiteSpace(_lastOpcError)
-                ? null
+                ? $"Using HTTP {viaHttp}."
                 : $"{_lastOpcError}. Using HTTP {viaHttp}.";
             _aggregator.ApplyPoll(DateTimeOffset.UtcNow, read.TorqueNm, read.AngleDeg, _lastError);
             Publish();
             return;
         }
 
-        _lastError = CombineErrors(_lastOpcError, read.Error);
-        if (_channel.IsConnected)
-        {
-            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, null, null, _lastError);
-        }
-        else
-        {
-            _aggregator.SetChannel(
-                ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
-        }
-
+        _lastError = CombineErrors(_lastOpcError, ShortHttpError(read.Error));
+        _aggregator.SetChannel(
+            ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, _lastError));
         Publish();
     }
 
@@ -360,10 +357,26 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         return $"{opc}. {http}";
     }
 
+    private static string ShortHttpError(string? error)
+    {
+        if (string.IsNullOrWhiteSpace(error))
+        {
+            return "HTTP fallback: no JSON tightening results.";
+        }
+
+        var trimmed = error.Trim();
+        if (trimmed.Length <= 180 && trimmed.Contains("HTTP fallback", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed;
+        }
+
+        return "HTTP fallback: no JSON tightening results from the dashboard.";
+    }
+
     private async Task PollAsync(CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(_staleTimeout);
+        timeout.CancelAfter(_latestResultId is null ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(5));
         var ct = timeout.Token;
 
         _latestResultId ??= await ResolveLatestResultAsync(ct).ConfigureAwait(false);
@@ -410,6 +423,16 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
                 "ResultManagement ns=1;i=5011"
             ),
             (
+                SpinBridgeNodes.TighteningSystemIjt,
+                [SpinBridgeNodes.ResultManagementName, SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
+                "TighteningSystem IJT nsu"
+            ),
+            (
+                SpinBridgeNodes.ResultManagementIjt,
+                [SpinBridgeNodes.ResultsName, SpinBridgeNodes.LatestResultName],
+                "ResultManagement IJT nsu"
+            ),
+            (
                 SpinBridgeNodes.ObjectsFolder,
                 [
                     SpinBridgeNodes.TighteningSystemName,
@@ -439,6 +462,20 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
             {
                 lastMiss = $"{candidate.Label}: {ex.Message}";
             }
+        }
+
+        try
+        {
+            var bfs = await FindLatestResultByNameAsync(cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(bfs))
+            {
+                _resolveError = null;
+                return bfs;
+            }
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            lastMiss = $"Objects browse: {ex.Message}";
         }
 
         _resolveError = lastMiss
@@ -583,9 +620,79 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         Publish();
     }
 
+    private async Task<string?> FindLatestResultByNameAsync(CancellationToken cancellationToken)
+    {
+        var queue = new Queue<(string Id, int Depth)>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        queue.Enqueue((SpinBridgeNodes.ObjectsFolder, 0));
+
+        while (queue.Count > 0 && seen.Count < 80 && !cancellationToken.IsCancellationRequested)
+        {
+            var (id, depth) = queue.Dequeue();
+            if (!seen.Add(id) || depth > 6)
+            {
+                continue;
+            }
+
+            IReadOnlyList<OpcBrowseNode> children;
+            try
+            {
+                children = await _channel.BrowseChildrenAsync(id, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                continue;
+            }
+
+            foreach (var child in children)
+            {
+                if (NamesMatch(child, SpinBridgeNodes.LatestResultName))
+                {
+                    return child.NodeId;
+                }
+
+                if (depth == 0 && IsSkippedRootName(child))
+                {
+                    continue;
+                }
+
+                queue.Enqueue((child.NodeId, depth + 1));
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsSkippedRootName(OpcBrowseNode node) =>
+        NamesEqual(node.BrowseName, "Server")
+        || NamesEqual(node.DisplayName, "Server")
+        || ContainsName(node, "Type")
+        || ContainsName(node, "View");
+
+    private static bool ContainsName(OpcBrowseNode node, string token) =>
+        (node.BrowseName?.Contains(token, StringComparison.OrdinalIgnoreCase) ?? false)
+        || (node.DisplayName?.Contains(token, StringComparison.OrdinalIgnoreCase) ?? false);
+
     private static bool NamesMatch(OpcBrowseNode node, string expected) =>
-        string.Equals(node.BrowseName, expected, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(node.DisplayName, expected, StringComparison.OrdinalIgnoreCase);
+        NamesEqual(node.BrowseName, expected) || NamesEqual(node.DisplayName, expected);
+
+    private static bool NamesEqual(string? actual, string expected)
+    {
+        if (string.IsNullOrWhiteSpace(actual))
+        {
+            return false;
+        }
+
+        if (string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return string.Equals(
+            actual.Replace(" ", "", StringComparison.Ordinal),
+            expected.Replace(" ", "", StringComparison.Ordinal),
+            StringComparison.OrdinalIgnoreCase);
+    }
 
     private sealed class ReadingBroadcaster : IObservable<SpinBridgeReading>
     {

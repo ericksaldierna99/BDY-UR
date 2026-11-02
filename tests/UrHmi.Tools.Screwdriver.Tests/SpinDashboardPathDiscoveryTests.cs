@@ -80,4 +80,22 @@ public sealed class SpinDashboardPathDiscoveryTests
             "/assets/index-results.js",
             SpinDashboardPathDiscovery.ResolveAgainst("http://10.42.0.1:80", "/assets/index-results.js"));
     }
+
+    [Fact]
+    public void System_and_delete_paths_are_not_tightening_result_json()
+    {
+        const string js = """
+            fetch('/spin_database/get_results_filtered');
+            fetch('/spin_database/delete_all_results');
+            fetch('/api/system/connect-to-wifi');
+            fetch('/api/system/is-openbalena-reachable');
+            """;
+
+        var paths = SpinDashboardPathDiscovery.ApiPaths(js);
+
+        Assert.Contains("/spin_database/get_results_filtered", paths);
+        Assert.DoesNotContain(paths, path => path.Contains("delete", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(paths, path => path.Contains("/api/system", StringComparison.OrdinalIgnoreCase));
+        Assert.True(SpinDashboardPathDiscovery.PreferJsonPost("/spin_database/get_result"));
+    }
 }

@@ -104,11 +104,47 @@ internal static class SpinDashboardPathDiscovery
     {
         return paths
             .SelectMany(Expand)
-            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Where(path => !string.IsNullOrWhiteSpace(path) && IsTighteningResultPath(path))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(Score)
             .ThenBy(path => path, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    public static bool IsTighteningResultPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || IsIgnoredFallbackPath(path))
+        {
+            return false;
+        }
+
+        var lower = path.ToLowerInvariant();
+        return lower.Contains("result", StringComparison.Ordinal)
+            || lower.Contains("joining", StringComparison.Ordinal)
+            || lower.Contains("tightening", StringComparison.Ordinal)
+            || lower.Contains("torque", StringComparison.Ordinal)
+            || lower.Contains("spin_database", StringComparison.Ordinal)
+            || lower.Contains("spin_screw", StringComparison.Ordinal);
+    }
+
+    public static bool IsIgnoredFallbackPath(string path)
+    {
+        var lower = path.ToLowerInvariant();
+        return lower.Contains("/api/system", StringComparison.Ordinal)
+            || lower.Contains("wifi", StringComparison.Ordinal)
+            || lower.Contains("delete", StringComparison.Ordinal)
+            || lower.Contains("openbalena", StringComparison.Ordinal)
+            || lower.Contains("is-new-update", StringComparison.Ordinal)
+            || lower.Contains("connect-to", StringComparison.Ordinal)
+            || lower.Contains("disable-wifi", StringComparison.Ordinal);
+    }
+
+    public static bool PreferJsonPost(string path)
+    {
+        var cut = path.Split('?', 2)[0];
+        return cut.Contains("/spin_database/", StringComparison.OrdinalIgnoreCase)
+            || cut.Contains("/spin_screw_process/", StringComparison.OrdinalIgnoreCase)
+            || cut.Contains("get_result", StringComparison.OrdinalIgnoreCase);
     }
 
     public static string? ResolveAgainst(string root, string reference)

@@ -45,7 +45,44 @@ public sealed class SpinDashboardHttpClientTests
 
         Assert.Null(read.TorqueNm);
         Assert.Null(read.AngleDeg);
-        Assert.Contains("HTTP", read.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("HTTP fallback", read.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/api/system", read.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("not JSON", read.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Spin_database_json_post_maps_final_torque_and_angle()
+    {
+        var handler = new MapHandler
+        {
+            ["/spin_database/get_results_filtered"] = (
+                200,
+                "<html>not json</html>",
+                "text/html")
+        };
+        handler.Post["/spin_database/get_results_filtered"] = (
+            200,
+            """
+            {
+              "results": [
+                {
+                  "overallResultValues": [
+                    { "name": "Final Torque", "measuredValue": 0 },
+                    { "name": "Final Angle", "measuredValue": 2.5 }
+                  ]
+                }
+              ]
+            }
+            """,
+            "application/json");
+
+        using var client = new SpinDashboardHttpClient(handler);
+        var read = await client.ReadLatestAsync("http://10.42.0.1:80", CancellationToken.None);
+
+        Assert.Equal(0, read.TorqueNm);
+        Assert.Equal(2.5, read.AngleDeg);
+        Assert.Equal("/spin_database/get_results_filtered", read.Path);
+        Assert.Null(read.Error);
     }
 
     [Fact]
@@ -103,6 +140,9 @@ public sealed class SpinDashboardHttpClientTests
         private readonly Dictionary<string, (int Status, string Body, string Type)> _responses =
             new(StringComparer.OrdinalIgnoreCase);
 
+        public Dictionary<string, (int Status, string Body, string Type)> Post { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
         public (int Status, string Body, string Type) this[string path]
         {
             set => _responses[path] = value;
@@ -118,8 +158,9 @@ public sealed class SpinDashboardHttpClientTests
                 : string.IsNullOrEmpty(uri.Query)
                     ? uri.AbsolutePath
                     : uri.PathAndQuery;
-            if (!_responses.TryGetValue(path, out var mapped)
-                && !_responses.TryGetValue(uri?.AbsolutePath ?? string.Empty, out mapped))
+            var table = request.Method == HttpMethod.Post ? Post : _responses;
+            if (!table.TryGetValue(path, out var mapped)
+                && !table.TryGetValue(uri?.AbsolutePath ?? string.Empty, out mapped))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
                 {

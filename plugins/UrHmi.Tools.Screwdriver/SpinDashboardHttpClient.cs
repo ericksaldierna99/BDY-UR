@@ -20,7 +20,17 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
         "/api/joining/results/latest",
         "/api/joining/results",
         "/api/tightening/results/latest",
-        "/api/tightening/results"
+        "/api/tightening/results",
+        "/spin_database/get_results_filtered",
+        "/spin_database/get_result",
+        "/spin_screw_process/program_result"
+    ];
+
+    private static readonly string[] JsonPostBodies =
+    [
+        """{"limit":1}""",
+        "{}",
+        """{"ok":true,"nok":true,"limit":1}"""
     ];
 
     private static readonly string[] OpenApiPaths =
@@ -52,6 +62,7 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
     private readonly bool _ownsClient;
     private readonly object _cacheGate = new();
     private string? _cachedWorkingPath;
+    private bool _cachedPost;
     private IReadOnlyList<string>? _cachedDiscoveredPaths;
     private bool _discoveryAttempted;
 
@@ -79,18 +90,20 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
         var root = baseUrl.TrimEnd('/');
         var errors = new List<string>();
         string? cachedWorking;
+        bool cachedPost;
         IReadOnlyList<string>? cachedDiscovered;
         bool discoveryAttempted;
         lock (_cacheGate)
         {
             cachedWorking = _cachedWorkingPath;
+            cachedPost = _cachedPost;
             cachedDiscovered = _cachedDiscoveredPaths;
             discoveryAttempted = _discoveryAttempted;
         }
 
         if (cachedWorking is not null)
         {
-            var cached = await TryReadPathAsync(root, cachedWorking, errors, cancellationToken)
+            var cached = await TryReadPathAsync(root, cachedWorking, cachedPost, cancellationToken)
                 .ConfigureAwait(false);
             if (cached is { } hit)
             {
@@ -102,6 +115,7 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
                 if (_cachedWorkingPath == cachedWorking)
                 {
                     _cachedWorkingPath = null;
+                    _cachedPost = false;
                 }
             }
         }
@@ -135,28 +149,35 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
         var tried = 0;
         foreach (var path in paths.Distinct(StringComparer.Ordinal))
         {
+            if (!SpinDashboardPathDiscovery.IsTighteningResultPath(path))
+            {
+                continue;
+            }
+
             if (tried >= MaxProbePaths)
             {
                 break;
             }
 
             tried++;
-            var read = await TryReadPathAsync(root, path, errors, cancellationToken).ConfigureAwait(false);
-            if (read is { } probed)
+            var preferPost = SpinDashboardPathDiscovery.PreferJsonPost(path);
+            var order = preferPost ? new[] { true, false } : new[] { false };
+            foreach (var post in order)
             {
-                return probed;
+                var read = await TryReadPathAsync(root, path, post, cancellationToken)
+                    .ConfigureAwait(false);
+                if (read is { } probed)
+                {
+                    return probed;
+                }
             }
         }
 
-        var detail = errors.Count == 0
-            ? "no HTTP result paths were tried."
-            : string.Join("; ", errors);
-        if (detail.Length > 400)
-        {
-            detail = detail[..400] + "…";
-        }
-
-        return new SpinHttpRead(null, null, null, $"HTTP {root}: {detail}");
+        return new SpinHttpRead(
+            null,
+            null,
+            null,
+            $"HTTP fallback: no JSON tightening results at {root}.");
     }
 
     public void Dispose()
@@ -287,23 +308,52 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
     private async Task<SpinHttpRead?> TryReadPathAsync(
         string root,
         string path,
-        List<string> errors,
+        bool post,
         CancellationToken cancellationToken)
     {
         var url = root + (path.StartsWith('/') ? path : "/" + path);
+        if (post)
+        {
+            foreach (var payload in JsonPostBodies)
+            {
+                var read = await TrySendAsync(url, path, payload, cancellationToken)
+                    .ConfigureAwait(false);
+                if (read is { } hit)
+                {
+                    return hit;
+                }
+            }
+
+            return null;
+        }
+
+        return await TrySendAsync(url, path, postBody: null, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<SpinHttpRead?> TrySendAsync(
+        string url,
+        string path,
+        string? postBody,
+        CancellationToken cancellationToken)
+    {
         try
         {
-            using var response = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = postBody is null
+                ? await _http.GetAsync(url, cancellationToken).ConfigureAwait(false)
+                : await _http.PostAsync(
+                        url,
+                        new StringContent(postBody, System.Text.Encoding.UTF8, "application/json"),
+                        cancellationToken)
+                    .ConfigureAwait(false);
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                errors.Add($"{path} {(int)response.StatusCode}");
                 return null;
             }
 
             if (!TryParseJson(body, out var element))
             {
-                errors.Add($"{path} not JSON");
                 return null;
             }
 
@@ -313,18 +363,16 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
                 lock (_cacheGate)
                 {
                     _cachedWorkingPath = path;
+                    _cachedPost = postBody is not null;
                 }
 
                 return new SpinHttpRead(pair.TorqueNm, pair.AngleDeg, path, null);
             }
 
-            errors.Add($"{path} no Final Torque/Angle");
             return null;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException
-            || !cancellationToken.IsCancellationRequested)
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            errors.Add($"{path}: {ex.Message}");
             return null;
         }
     }
