@@ -1,0 +1,79 @@
+<UserControl x:Class="UrHmi.Tools.Screwdriver.Ui.Views.ScrewdriverView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel>
+      <TextBlock Style="{DynamicResource ModuleTitleStyle}" Text="{Binding Title}" />
+      <TextBlock Style="{DynamicResource BodyTextStyle}"
+                 Margin="0,0,0,12"
+                 Text="{Binding MapNotice}" />
+      <WrapPanel>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Tool" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding ToolModel}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="SpinBridge IP" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding SpinBridgeIp}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="220">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="OPC UA" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding OpcUaEndpoint}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="280">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="OPC UA link" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding OpcLinkText}" />
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Margin="0,8,0,0" Text="Last OPC UA error" />
+            <TextBlock Style="{DynamicResource BodyTextStyle}"
+                       Text="{Binding OpcErrorText}"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </WrapPanel>
+      <WrapPanel>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Torque (OPC UA)" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding TorqueText}" />
+            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding TorqueCaption}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Angle (OPC UA)" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding AngleText}" />
+            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding AngleCaption}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="200">
+          <StackPanel>
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Final Insertion Depth (mm)" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding DepthText}" />
+            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding DepthCaption}" />
+          </StackPanel>
+        </Border>
+      </WrapPanel>
+      <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+        <Button Style="{DynamicResource SettingButtonStyle}"
+                Content="Enable"
+                Command="{Binding EnableCommand}" />
+        <Button Style="{DynamicResource SettingButtonStyle}"
+                Content="Disable"
+                Command="{Binding DisableCommand}" />
+        <Button Style="{DynamicResource SettingButtonStyle}"
+                Content="Reset fault"
+                Command="{Binding ResetFaultCommand}" />
+      </StackPanel>
+      <TextBlock Style="{DynamicResource BodyTextStyle}"
+                 Margin="0,12,0,0"
+                 Text="{Binding CommandStatus}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -21,8 +21,10 @@
     "staleTimeoutMs": 1000
   },
   "tools": {
-    "selectedId": null,
-    "enabled": []
+    "selectedId": "screwdriver",
+    "enabled": [
+      "screwdriver"
+    ]
   },
   "ui": {
     "theme": "industrial"

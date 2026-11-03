@@ -23,5 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\UrHmi.Infrastructure\UrHmi.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\UrHmi.Domain\UrHmi.Domain.csproj" />
+    <ProjectReference Include="..\..\src\UrHmi.Tools.Abstractions\UrHmi.Tools.Abstractions.csproj" />
   </ItemGroup>
 </Project>

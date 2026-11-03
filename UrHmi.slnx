@@ -8,10 +8,15 @@
     <Project Path="src/UrHmi.Tools.Abstractions/UrHmi.Tools.Abstractions.csproj" />
     <Project Path="src/UrHmi.Ui/UrHmi.Ui.csproj" />
   </Folder>
+  <Folder Name="/plugins/">
+    <Project Path="plugins/UrHmi.Tools.Screwdriver/UrHmi.Tools.Screwdriver.csproj" />
+    <Project Path="plugins/UrHmi.Tools.Screwdriver.Ui/UrHmi.Tools.Screwdriver.Ui.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/UrHmi.Application.Tests/UrHmi.Application.Tests.csproj" />
     <Project Path="tests/UrHmi.Domain.Tests/UrHmi.Domain.Tests.csproj" />
     <Project Path="tests/UrHmi.Infrastructure.Tests/UrHmi.Infrastructure.Tests.csproj" />
     <Project Path="tests/UrHmi.Presentation.Tests/UrHmi.Presentation.Tests.csproj" />
+    <Project Path="tests/UrHmi.Tools.Screwdriver.Tests/UrHmi.Tools.Screwdriver.Tests.csproj" />
   </Folder>
 </Solution>

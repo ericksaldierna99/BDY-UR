@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>UrHmi.Tools.Screwdriver</RootNamespace>
+    <AssemblyName>UrHmi.Tools.Screwdriver</AssemblyName>
+    <Description>Cell-specific screwdriver (atornillado) tool module. Core projects must not reference this assembly.</Description>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\UrHmi.Tools.Abstractions\UrHmi.Tools.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\UrHmi.Domain\UrHmi.Domain.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="UrHmi.Tools.Screwdriver.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="screwdriver.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <Target Name="CopyToAppPlugins" AfterTargets="Build">
+    <PropertyGroup>
+      <_AppPluginsDir>$(MSBuildThisFileDirectory)..\..\src\UrHmi.App\bin\$(Configuration)\$(TargetFramework)\plugins\</_AppPluginsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(_AppPluginsDir)" />
+    <ItemGroup>
+      <_PluginCopy Include="$(TargetPath)" />
+      <_PluginCopy Include="$(TargetDir)$(TargetName).deps.json" Condition="Exists('$(TargetDir)$(TargetName).deps.json')" />
+      <_PluginCopy Include="$(ProjectDir)screwdriver.json" />
+      <_PluginRuntime Include="$(TargetDir)*.dll" />
+      <_PluginRuntime Remove="$(TargetDir)UrHmi.*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PluginCopy)" DestinationFolder="$(_AppPluginsDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_PluginRuntime)" DestinationFolder="$(_AppPluginsDir)" SkipUnchangedFiles="true" Condition="'@(_PluginRuntime)' != ''" />
+  </Target>
+</Project>

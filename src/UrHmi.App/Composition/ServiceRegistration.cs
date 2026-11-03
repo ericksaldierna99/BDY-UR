@@ -3,16 +3,20 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using UrHmi.App.Dispatching;
+using UrHmi.App.Plugins;
 using UrHmi.Application.Authorization;
 using UrHmi.Application.Configuration;
+using UrHmi.Application.Jog;
 using UrHmi.Application.Telemetry;
+using UrHmi.Application.Tools;
+using UrHmi.Domain.Alarms;
 using UrHmi.Domain.Configuration;
 using UrHmi.Domain.Ports;
-using UrHmi.Application.Jog;
 using UrHmi.Infrastructure.Alarms;
 using UrHmi.Infrastructure.Config;
 using UrHmi.Infrastructure.Jog;
 using UrHmi.Infrastructure.Plc;
+using UrHmi.Infrastructure.Plugins;
 using UrHmi.Infrastructure.Robot;
 using UrHmi.Infrastructure.Secrets;
 using UrHmi.Presentation.Alarms;
@@ -22,6 +26,7 @@ using UrHmi.Presentation.Navigation;
 using UrHmi.Presentation.Settings;
 using UrHmi.Presentation.Shell;
 using UrHmi.Presentation.Tools;
+using UrHmi.Tools.Abstractions;
 
 namespace UrHmi.App.Composition;
 
@@ -83,6 +88,9 @@ internal static class ServiceRegistration
         services.AddSingleton<IPlcTelemetry>(sp => sp.GetRequiredService<PlcTelemetryService>());
         services.AddHostedService(sp => sp.GetRequiredService<PlcTelemetryService>());
 
+        services.AddSingleton<IToolHost, ToolHost>();
+        services.AddSingleton<IToolCatalog>(sp => CreateToolCatalog(sp));
+
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<AlarmsViewModel>();
         services.AddTransient<ToolsViewModel>();
@@ -117,5 +125,50 @@ internal static class ServiceRegistration
 
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
+    }
+
+    private static IToolCatalog CreateToolCatalog(IServiceProvider sp)
+    {
+        var configuration = sp.GetRequiredService<HmiConfiguration>();
+        var alarms = sp.GetRequiredService<IAlarmSink>();
+        var logger = sp.GetRequiredService<ILogger<PluginDirectoryLoader>>();
+        var loader = new PluginDirectoryLoader(logger);
+        var directory = Path.Combine(AppContext.BaseDirectory, "plugins");
+        var loaded = loader.Load(directory);
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var failure in loaded.Failures)
+        {
+            alarms.Raise(new AlarmRecord(
+                $"app.plugin.load.{Path.GetFileNameWithoutExtension(failure.AssemblyPath)}",
+                now,
+                null,
+                AlarmOrigin.HmiApplication,
+                "plugin",
+                $"Failed to load tool plugin '{failure.AssemblyPath}': {failure.Message}",
+                IsActive: true,
+                Duration: null));
+        }
+
+        foreach (var id in configuration.Tools.Enabled)
+        {
+            if (loaded.Modules.Any(module => string.Equals(module.Id, id, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            alarms.Raise(new AlarmRecord(
+                $"app.plugin.missing.{id}",
+                now,
+                null,
+                AlarmOrigin.HmiApplication,
+                "plugin",
+                $"Enabled tool module '{id}' was not loaded from {directory}.",
+                IsActive: true,
+                Duration: null));
+        }
+
+        ToolViewTemplateRegistrar.Register(loaded.Views);
+        return new ToolCatalog(loaded.Modules, configuration.Tools, loaded.Views);
     }
 }
