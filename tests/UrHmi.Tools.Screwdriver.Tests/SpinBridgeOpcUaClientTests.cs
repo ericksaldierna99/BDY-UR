@@ -226,6 +226,8 @@ public sealed class SpinBridgeOpcUaClientTests
         var reading = await WaitForAsync(client, value => value.TorqueNm.Freshness == Freshness.Live);
         Assert.Equal(0, reading.TorqueNm.Value);
         Assert.Equal(4, reading.AngleDeg.Value);
+        Assert.Equal(4.2, reading.DepthMm.Value);
+        Assert.Equal(Freshness.Live, reading.DepthMm.Freshness);
         Assert.Null(reading.Channel.LastError);
     }
 

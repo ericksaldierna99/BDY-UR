@@ -83,7 +83,7 @@ public sealed class ScrewdriverProjectionTests
     }
 
     [Fact]
-    public void Torque_and_angle_come_from_spinbridge_opcua_not_plc_tags()
+    public void Torque_angle_and_depth_come_from_spinbridge_opcua_not_plc_tags()
     {
         var now = DateTimeOffset.UtcNow;
         var plc = LivePlc(now, new Dictionary<string, object?>
@@ -95,13 +95,16 @@ public sealed class ScrewdriverProjectionTests
         var spin = new SpinBridgeReading(
             new ChannelHealth(SpinBridgeReading.ChannelId, LinkState.Connected, now, TimeSpan.Zero, null),
             TimedValue<double>.Live(1.25, now),
-            TimedValue<double>.Live(45, now));
+            TimedValue<double>.Live(45, now),
+            TimedValue<double>.Live(4.2, now));
 
         var snapshot = ScrewdriverProjection.Project(plc, spin);
 
         Assert.Equal("1.25 Nm", snapshot.Torque.Text);
         Assert.Equal("45°", snapshot.Angle.Text);
+        Assert.Equal("4.2 mm", snapshot.Depth.Text);
         Assert.Equal(Freshness.Live, snapshot.Torque.Freshness);
+        Assert.Equal(Freshness.Live, snapshot.Depth.Freshness);
         Assert.Equal(IndicatorKind.Normal, snapshot.Torque.Kind);
         Assert.DoesNotContain("99", snapshot.Torque.Text, StringComparison.Ordinal);
     }
@@ -113,6 +116,7 @@ public sealed class ScrewdriverProjectionTests
         var spin = new SpinBridgeReading(
             new ChannelHealth(SpinBridgeReading.ChannelId, LinkState.Connected, now, TimeSpan.Zero, null),
             TimedValue<double>.Unavailable(),
+            TimedValue<double>.Unavailable(),
             TimedValue<double>.Unavailable());
 
         var snapshot = ScrewdriverProjection.Project(PlcSnapshot.Empty(now), spin);
@@ -120,7 +124,9 @@ public sealed class ScrewdriverProjectionTests
         Assert.Equal(LinkState.Connected, spin.Channel.Link);
         Assert.Equal(Freshness.Unavailable, snapshot.Torque.Freshness);
         Assert.Equal(Freshness.Unavailable, snapshot.Angle.Freshness);
+        Assert.Equal(Freshness.Unavailable, snapshot.Depth.Freshness);
         Assert.Equal("—", snapshot.Torque.Text);
+        Assert.Equal("—", snapshot.Depth.Text);
         Assert.Equal(IndicatorKind.Normal, snapshot.Torque.Kind);
         Assert.Equal(IndicatorKind.Normal, snapshot.Angle.Kind);
         Assert.NotEqual(IndicatorKind.CommsLoss, snapshot.Torque.Kind);
@@ -134,13 +140,16 @@ public sealed class ScrewdriverProjectionTests
         var spin = new SpinBridgeReading(
             ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, "socket closed"),
             new TimedValue<double>(1.5, now, Freshness.Stale),
-            new TimedValue<double>(20, now, Freshness.Stale));
+            new TimedValue<double>(20, now, Freshness.Stale),
+            new TimedValue<double>(0, now, Freshness.Stale));
 
         var snapshot = ScrewdriverProjection.Project(PlcSnapshot.Empty(now), spin);
 
         Assert.Equal("1.5 Nm", snapshot.Torque.Text);
         Assert.Equal("20°", snapshot.Angle.Text);
+        Assert.Equal("0 mm", snapshot.Depth.Text);
         Assert.Equal(Freshness.Stale, snapshot.Torque.Freshness);
+        Assert.Equal(Freshness.Stale, snapshot.Depth.Freshness);
         Assert.Equal("dato no actualizado", snapshot.Torque.Caption);
         Assert.Equal(IndicatorKind.Normal, snapshot.Torque.Kind);
         Assert.NotEqual(IndicatorKind.Fault, snapshot.Torque.Kind);

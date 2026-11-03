@@ -34,7 +34,10 @@ public sealed class ScrewdriverToolModuleTests
         Assert.Equal("opc.tcp://10.42.0.1:4840", vm.OpcUaEndpoint);
         Assert.Equal("—", vm.StatusText);
         Assert.Equal("sin dato", vm.StatusCaption);
+        Assert.Equal("—", vm.DepthText);
+        Assert.Equal("sin dato", vm.DepthCaption);
         Assert.Contains("OPC UA", vm.MapNotice, StringComparison.Ordinal);
+        Assert.Contains("insertion depth", vm.MapNotice, StringComparison.OrdinalIgnoreCase);
     }
 }
 

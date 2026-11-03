@@ -45,7 +45,7 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
     public string OpcUaEndpoint => Configuration.OpcUaEndpoint;
 
     public string MapNotice =>
-        $"Torque and angle come from SpinBridge OPC UA at {Configuration.OpcUaEndpoint} (SDV35), not from the UR or PLC tags. Remaining I/O waits on the Micro820 map. Core projects do not reference this assembly.";
+        $"Torque, angle, and insertion depth come from SpinBridge OPC UA at {Configuration.OpcUaEndpoint} (SDV35), not from the UR or PLC tags. Remaining I/O waits on the Micro820 map. Core projects do not reference this assembly.";
 
     [ObservableProperty]
     private string _statusText = "—";
@@ -76,6 +76,12 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _angleCaption = "sin dato";
+
+    [ObservableProperty]
+    private string _depthText = "—";
+
+    [ObservableProperty]
+    private string _depthCaption = "sin dato";
 
     [ObservableProperty]
     private string _cycleCountText = "—";
@@ -201,6 +207,8 @@ public sealed partial class ScrewdriverViewModel : ObservableObject, IDisposable
         TorqueCaption = snapshot.Torque.Caption;
         AngleText = snapshot.Angle.Text;
         AngleCaption = snapshot.Angle.Caption;
+        DepthText = snapshot.Depth.Text;
+        DepthCaption = snapshot.Depth.Caption;
         CycleCountText = snapshot.CycleCount.Text;
         CycleCountCaption = snapshot.CycleCount.Caption;
         ProgramText = snapshot.Program.Text;

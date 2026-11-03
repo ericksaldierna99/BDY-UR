@@ -77,12 +77,15 @@ public sealed class ScrewdriverViewModelTests
         feed.Publish(new SpinBridgeReading(
             new ChannelHealth(SpinBridgeReading.ChannelId, LinkState.Connected, now, TimeSpan.Zero, null),
             TimedValue<double>.Live(2.4, now),
-            TimedValue<double>.Live(30, now)));
+            TimedValue<double>.Live(30, now),
+            TimedValue<double>.Live(0, now)));
 
         Assert.Equal("2.4 Nm", vm.TorqueText);
         Assert.Equal("30°", vm.AngleText);
+        Assert.Equal("0 mm", vm.DepthText);
         Assert.Equal(string.Empty, vm.TorqueCaption);
         Assert.Equal(string.Empty, vm.AngleCaption);
+        Assert.Equal(string.Empty, vm.DepthCaption);
     }
 
     [Fact]
@@ -102,11 +105,13 @@ public sealed class ScrewdriverViewModelTests
                 TimeSpan.Zero,
                 "LatestResult was not found"),
             TimedValue<double>.Unavailable(),
+            TimedValue<double>.Unavailable(),
             TimedValue<double>.Unavailable()));
 
         Assert.Equal("Connected", vm.OpcLinkText);
         Assert.Equal("LatestResult was not found", vm.OpcErrorText);
         Assert.Equal("sin dato", vm.TorqueCaption);
+        Assert.Equal("sin dato", vm.DepthCaption);
     }
 
     [Fact]

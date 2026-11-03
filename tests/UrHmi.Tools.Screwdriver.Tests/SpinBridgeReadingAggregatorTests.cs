@@ -11,15 +11,17 @@ public sealed class SpinBridgeReadingAggregatorTests
     {
         var aggregator = new SpinBridgeReadingAggregator();
         var now = DateTimeOffset.Parse("2026-11-02T12:00:00Z");
-        aggregator.ApplyPoll(now, 2.4, 30);
+        aggregator.ApplyPoll(now, 2.4, 30, depthMm: 4.2);
 
         var reading = aggregator.Build(now.AddMilliseconds(500), Stale);
 
         Assert.Equal(LinkState.Connected, reading.Channel.Link);
         Assert.Equal(Freshness.Live, reading.TorqueNm.Freshness);
         Assert.Equal(Freshness.Live, reading.AngleDeg.Freshness);
+        Assert.Equal(Freshness.Live, reading.DepthMm.Freshness);
         Assert.Equal(2.4, reading.TorqueNm.Value);
         Assert.Equal(30, reading.AngleDeg.Value);
+        Assert.Equal(4.2, reading.DepthMm.Value);
     }
 
     [Fact]
@@ -35,6 +37,7 @@ public sealed class SpinBridgeReadingAggregatorTests
         Assert.Equal(LinkState.Connected, reading.Channel.Link);
         Assert.Equal(Freshness.Unavailable, reading.TorqueNm.Freshness);
         Assert.Equal(Freshness.Unavailable, reading.AngleDeg.Freshness);
+        Assert.Equal(Freshness.Unavailable, reading.DepthMm.Freshness);
         Assert.Null(reading.TorqueNm.LastValidUtc);
     }
 
@@ -43,7 +46,7 @@ public sealed class SpinBridgeReadingAggregatorTests
     {
         var aggregator = new SpinBridgeReadingAggregator();
         var now = DateTimeOffset.Parse("2026-11-02T12:00:00Z");
-        aggregator.ApplyPoll(now, 1.5, 20);
+        aggregator.ApplyPoll(now, 1.5, 20, depthMm: 0);
         aggregator.SetChannel(ChannelHealth.Disconnected(SpinBridgeReading.ChannelId, "socket closed"));
 
         var reading = aggregator.Build(now.AddSeconds(1), Stale);
@@ -51,8 +54,10 @@ public sealed class SpinBridgeReadingAggregatorTests
         Assert.Equal(LinkState.Disconnected, reading.Channel.Link);
         Assert.Equal(1.5, reading.TorqueNm.Value);
         Assert.Equal(20, reading.AngleDeg.Value);
+        Assert.Equal(0, reading.DepthMm.Value);
         Assert.Equal(Freshness.Stale, reading.TorqueNm.Freshness);
         Assert.Equal(Freshness.Stale, reading.AngleDeg.Freshness);
+        Assert.Equal(Freshness.Stale, reading.DepthMm.Freshness);
     }
 
     [Fact]

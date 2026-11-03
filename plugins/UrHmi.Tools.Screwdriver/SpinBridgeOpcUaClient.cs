@@ -324,7 +324,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
             return;
         }
 
-        if (read.TorqueNm is not null || read.AngleDeg is not null)
+        if (read.TorqueNm is not null || read.AngleDeg is not null || read.DepthMm is not null)
         {
             var viaHttp = string.IsNullOrWhiteSpace(read.Path)
                 ? _configuration.HttpBase
@@ -332,7 +332,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
             _lastError = string.IsNullOrWhiteSpace(_lastOpcError)
                 ? $"Using HTTP {viaHttp}."
                 : $"{_lastOpcError}. Using HTTP {viaHttp}.";
-            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, read.TorqueNm, read.AngleDeg, _lastError);
+            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, read.TorqueNm, read.AngleDeg, _lastError, read.DepthMm);
             Publish();
             return;
         }
@@ -347,7 +347,8 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
     {
         var current = Current;
         return current.TorqueNm.Freshness == Freshness.Live
-            || current.AngleDeg.Freshness == Freshness.Live;
+            || current.AngleDeg.Freshness == Freshness.Live
+            || current.DepthMm.Freshness == Freshness.Live;
     }
 
     private static string? CombineErrors(string? opc, string? http)
@@ -590,7 +591,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
     private void ApplyPayload(object? payload, bool fromEvent)
     {
         var pair = SpinBridgeResultDecoder.Decode(latestResult: payload);
-        if (pair.TorqueNm is not null || pair.AngleDeg is not null)
+        if (pair.TorqueNm is not null || pair.AngleDeg is not null || pair.DepthMm is not null)
         {
             ApplyMeasured(pair, payload);
             return;
@@ -613,7 +614,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
     private void ApplyMeasured(SpinBridgeMeasuredPair pair, object? payload)
     {
         var decodeError = SpinBridgeResultDecoder.DescribeFailure(payload, pair);
-        if (pair.TorqueNm is null && pair.AngleDeg is null)
+        if (pair.TorqueNm is null && pair.AngleDeg is null && pair.DepthMm is null)
         {
             if (HasLiveValues())
             {
@@ -628,7 +629,7 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         {
             _lastError = null;
             _lastOpcError = null;
-            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, pair.TorqueNm, pair.AngleDeg, null);
+            _aggregator.ApplyPoll(DateTimeOffset.UtcNow, pair.TorqueNm, pair.AngleDeg, null, pair.DepthMm);
             _readings.Publish(_aggregator.Build(DateTimeOffset.UtcNow, _staleTimeout));
         }
     }
@@ -639,7 +640,8 @@ public sealed class SpinBridgeOpcUaClient : ISpinBridgeClient
         {
             var current = _readings.Current;
             if (current.TorqueNm.Freshness == Freshness.Live
-                || current.AngleDeg.Freshness == Freshness.Live)
+                || current.AngleDeg.Freshness == Freshness.Live
+                || current.DepthMm.Freshness == Freshness.Live)
             {
                 return;
             }

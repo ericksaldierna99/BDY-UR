@@ -16,6 +16,7 @@ public sealed record ScrewdriverSnapshot(
     ScrewdriverField Result,
     ScrewdriverField Torque,
     ScrewdriverField Angle,
+    ScrewdriverField Depth,
     ScrewdriverField CycleCount,
     ScrewdriverField Program,
     ScrewdriverField Fault,
@@ -31,11 +32,13 @@ public static class ScrewdriverProjection
 
         var torque = FormatMeasured(spinBridge.TorqueNm, " Nm");
         var angle = FormatMeasured(spinBridge.AngleDeg, "°");
+        var depth = FormatMeasured(spinBridge.DepthMm, " mm");
         if (spinBridge.Channel.Link is LinkState.Disconnected or LinkState.Faulted
             && torque.Freshness == Freshness.Unavailable)
         {
             torque = torque with { Kind = IndicatorKind.CommsLoss };
             angle = angle with { Kind = IndicatorKind.CommsLoss };
+            depth = depth with { Kind = IndicatorKind.CommsLoss };
         }
 
         var mapFreshness = plc.Tags.Freshness;
@@ -50,6 +53,7 @@ public static class ScrewdriverProjection
                 empty,
                 torque,
                 angle,
+                depth,
                 empty,
                 empty,
                 empty,
@@ -69,6 +73,7 @@ public static class ScrewdriverProjection
             result with { Kind = KindForResult(result) },
             torque,
             angle,
+            depth,
             cycles,
             program,
             fault with { Kind = KindForFault(fault) },

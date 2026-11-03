@@ -358,7 +358,7 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
             }
 
             var pair = SpinBridgeResultDecoder.Decode(latestResult: SpinBridgeJson.ToObject(element));
-            if (pair.TorqueNm is not null || pair.AngleDeg is not null)
+            if (pair.TorqueNm is not null || pair.AngleDeg is not null || pair.DepthMm is not null)
             {
                 lock (_cacheGate)
                 {
@@ -366,7 +366,7 @@ public sealed class SpinDashboardHttpClient : ISpinHttpApi, IDisposable
                     _cachedPost = postBody is not null;
                 }
 
-                return new SpinHttpRead(pair.TorqueNm, pair.AngleDeg, path, null);
+                return new SpinHttpRead(pair.TorqueNm, pair.AngleDeg, path, null, pair.DepthMm);
             }
 
             return null;

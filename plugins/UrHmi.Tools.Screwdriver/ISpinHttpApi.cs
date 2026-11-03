@@ -4,7 +4,8 @@ public readonly record struct SpinHttpRead(
     double? TorqueNm,
     double? AngleDeg,
     string? Path,
-    string? Error);
+    string? Error,
+    double? DepthMm = null);
 
 /// <summary>
 /// Spin Dashboard HTTP/API used when OPC UA is not reachable on the hotspot.

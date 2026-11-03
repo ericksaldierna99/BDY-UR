@@ -40,20 +40,6 @@
       <WrapPanel>
         <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
           <StackPanel>
-            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Status" />
-            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding StatusText}" />
-            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding StatusCaption}" />
-          </StackPanel>
-        </Border>
-        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
-          <StackPanel>
-            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Result" />
-            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding ResultText}" />
-            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding ResultCaption}" />
-          </StackPanel>
-        </Border>
-        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
-          <StackPanel>
             <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Torque (OPC UA)" />
             <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding TorqueText}" />
             <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding TorqueCaption}" />
@@ -66,32 +52,11 @@
             <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding AngleCaption}" />
           </StackPanel>
         </Border>
-        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
+        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="200">
           <StackPanel>
-            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Cycle count" />
-            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding CycleCountText}" />
-            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding CycleCountCaption}" />
-          </StackPanel>
-        </Border>
-        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
-          <StackPanel>
-            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Program" />
-            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding ProgramText}" />
-            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding ProgramCaption}" />
-          </StackPanel>
-        </Border>
-        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
-          <StackPanel>
-            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Fault" />
-            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding FaultText}" />
-            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding FaultCaption}" />
-          </StackPanel>
-        </Border>
-        <Border Style="{DynamicResource MetricCardStyle}" MinWidth="160">
-          <StackPanel>
-            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Enabled" />
-            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding EnabledText}" />
-            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding EnabledCaption}" />
+            <TextBlock Style="{DynamicResource MetricLabelStyle}" Text="Final Insertion Depth (mm)" />
+            <TextBlock Style="{DynamicResource MetricValueStyle}" Text="{Binding DepthText}" />
+            <TextBlock Style="{DynamicResource MetricCaptionStyle}" Text="{Binding DepthCaption}" />
           </StackPanel>
         </Border>
       </WrapPanel>
